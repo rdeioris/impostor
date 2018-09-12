@@ -15,7 +15,7 @@ struct OpCode<T: AddressBusIO<u16, u8>> {
 }
 
 // we cannot use derive as the generics in place generates mess
-impl<T: AddressBusIO<u16, u8>> Copy for OpCode<T> { }
+impl<T: AddressBusIO<u16, u8>> Copy for OpCode<T> {}
 
 impl<T: AddressBusIO<u16, u8>> Clone for OpCode<T> {
     fn clone(&self) -> OpCode<T> {
@@ -45,6 +45,16 @@ pub struct MOS6502<T: AddressBusIO<u16, u8>> {
     opcode: OpCode<T>,
 
     opcodes: [OpCode<T>; 256],
+}
+
+macro_rules! opcode {
+    ($cpu:ident, $name:ident, $code:expr, $fetch:ident) => (
+        $cpu.register_opcode(stringify!($name), Self::$name, $code, Self::$fetch);
+    );
+    ($cpu:ident, $name:ident, $code:expr, $fetch:ident, $($codeN:expr, $fetchN:ident),+) => (
+        opcode!($cpu, $name, $code, $fetch);
+        opcode!($cpu, $name, $($codeN, $fetchN),+);
+    );
 }
 
 impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
@@ -77,20 +87,18 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
             bus: bus,
         };
 
-        cpu.register_opcode(
-            "ADC",
-            Self::adc,
-            &[
-                (0x69, Self::immediate),
-                (0x65, Self::zeropage),
-                (0x75, Self::zeropage_x),
-                (0x6d, Self::absolute),
-                (0x7d, Self::absolute_x),
-                (0x79, Self::absolute_y),
-                (0x61, Self::indirect_x),
-                (0x71, Self::indirect_y),
-            ],
+        opcode!(
+            cpu, adc, 0x69, immediate, 0x65, zeropage, 0x75, zeropage_x, 0x6d, absolute, 0x7d,
+            absolute_x, 0x79, absolute_y, 0x61, indirect_x, 0x71, indirect_y
         );
+
+        opcode!(cpu, clc, 0x18, implied);
+        opcode!(cpu, sec, 0x38, implied);
+        opcode!(cpu, cli, 0x58, implied);
+        opcode!(cpu, sei, 0x78, implied);
+        opcode!(cpu, clv, 0xb8, implied);
+        opcode!(cpu, cld, 0xd8, implied);
+        opcode!(cpu, sed, 0xf8, implied);
 
         return cpu;
     }
@@ -99,15 +107,14 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
         &mut self,
         name: &'static str,
         fun: fn(&mut MOS6502<T>),
-        opcodes: &[(u8, fn(&mut MOS6502<T>))],
+        code: u8,
+        fetch: fn(&mut MOS6502<T>),
     ) {
-        for opcode in opcodes {
-            self.opcodes[opcode.0 as usize] = OpCode {
-                fetch: opcode.1,
-                fun: fun,
-                name: name,
-            };
-        }
+        self.opcodes[code as usize] = OpCode {
+            fetch: fetch,
+            fun: fun,
+            name: name,
+        };
     }
 
     fn read8(&mut self, addr: u16) -> u8 {
@@ -402,8 +409,28 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
         self.set_flag(CARRY, true);
     }
 
+    fn sei(&mut self) {
+        self.set_flag(INTERRUPT, true);
+    }
+
     fn clc(&mut self) {
         self.set_flag(CARRY, false);
+    }
+
+    fn cli(&mut self) {
+        self.set_flag(INTERRUPT, false);
+    }
+
+    fn clv(&mut self) {
+        self.set_flag(OVERFLOW, false);
+    }
+
+    fn cld(&mut self) {
+        self.set_flag(DECIMAL, false);
+    }
+
+    fn sed(&mut self) {
+        self.set_flag(DECIMAL, true);
     }
 
     fn beq(&mut self) {
@@ -490,7 +517,6 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
 
 impl<T: AddressBusIO<u16, u8>> Clock for MOS6502<T> {
     fn step(&mut self) {
-        let pc = self.pc;
         let opcode = self.read8_from_pc();
         self.current_opcode = opcode;
         self.opcode = self.opcodes[opcode as usize];

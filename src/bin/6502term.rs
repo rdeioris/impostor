@@ -9,6 +9,6 @@ use impostor::Clock;
 fn main() {
     let term = UnixTerm::new();
     let ram = Ram::new(4096);
-    let mut cpu = MOS6502::new(ram); 
+    let mut cpu = MOS6502::new(ram);
     cpu.step();
 }

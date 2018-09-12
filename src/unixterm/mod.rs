@@ -1,11 +1,10 @@
 use AddressBusIO;
 
-pub struct UnixTerm {
-}
+pub struct UnixTerm {}
 
 impl UnixTerm {
     pub fn new() -> UnixTerm {
-        UnixTerm{}
+        UnixTerm {}
     }
 }
 
@@ -28,4 +27,3 @@ mod tests {
         assert_eq!(2 + 2, 4);
     }
 }
-

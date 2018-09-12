@@ -1,4 +1,4 @@
-use {AddressBusIO, Address, Data};
+use {Address, AddressBusIO, Data};
 
 pub struct Ram<T: Data> {
     cells: Vec<T>,
@@ -6,10 +6,11 @@ pub struct Ram<T: Data> {
 
 impl<T: Data> Ram<T> {
     pub fn new(size: usize) -> Ram<T> {
-        Ram{cells: vec![T::default(); size]}
+        Ram {
+            cells: vec![T::default(); size],
+        }
     }
 }
-
 
 impl<T: Address, U: Data> AddressBusIO<T, U> for Ram<U> {
     fn read(&mut self, address: T) -> U {
@@ -22,4 +23,3 @@ impl<T: Address, U: Data> AddressBusIO<T, U> for Ram<U> {
         self.cells[address64 as usize] = value;
     }
 }
-
