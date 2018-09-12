@@ -100,6 +100,29 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
         opcode!(cpu, cld, 0xd8, implied);
         opcode!(cpu, sed, 0xf8, implied);
 
+        opcode!(cpu, jmp, 0x4c, absolute, 0x6c, indirect); 
+        opcode!(cpu, jsr, 0x20, absolute); 
+
+        opcode!(cpu, lda, 0xa9, immediate, 0xa5, zeropage, 0xb5, zeropage_x, 0xad, absolute, 0xbd, absolute_x, 0xb9, absolute_y, 0xa1, indirect_x, 0xb1, indirect_y); 
+        opcode!(cpu, ldx, 0xa2, immediate, 0xa6, zeropage, 0xb6, zeropage_y, 0xae, absolute, 0xbe, absolute_y); 
+        opcode!(cpu, ldy, 0xa0, immediate, 0xa4, zeropage, 0xb4, zeropage_x, 0xac, absolute, 0xbc, absolute_x); 
+
+        opcode!(cpu, nop, 0xea, implied);
+
+        opcode!(cpu, tax, 0xaa, implied);
+        opcode!(cpu, txa, 0x8a, implied);
+        opcode!(cpu, dex, 0xca, implied);
+        opcode!(cpu, inx, 0xe8, implied);
+        opcode!(cpu, tay, 0xa8, implied);
+        opcode!(cpu, tya, 0x98, implied);
+        opcode!(cpu, tay, 0xa8, implied);
+        opcode!(cpu, dey, 0x88, implied);
+        opcode!(cpu, iny, 0xc8, implied);
+
+        opcode!(cpu, rts, 0x60, implied);
+
+        opcode!(cpu, sbc, 0xe9, immediate, 0xe5, zeropage);
+
         return cpu;
     }
 
@@ -119,6 +142,12 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
 
     fn read8(&mut self, addr: u16) -> u8 {
         self.bus.read(addr)
+    }
+
+    fn read16(&mut self, addr: u16) -> u16 {
+        let low = self.read8(addr) as u16;
+        let high = self.read8(addr + 1) as u16;
+        return (high << 8) | low;
     }
 
     fn write8(&mut self, addr: u16, value: u8) {
@@ -220,15 +249,36 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
     }
 
     fn zeropage_x(&mut self) {
-        let pc = self.pc;
         // leave it as u8 to allow overflowing
-        let offset = self.read8(pc) + self.x;
-        self.addr = offset as u16;
-        self.value = self.read8(offset as u16);
-        self.pc += 1;
+        let addr = self.read8_from_pc() + self.x;
+        self.addr = addr as u16;
+        self.value = self.read8(addr as u16);
         self.ticks += 3;
         if self.debug {
             self.debug_line = format!("{} ${:02X},X", self.get_opcode_name(), self.addr);
+        }
+    }
+
+    fn zeropage_y(&mut self) {
+        // leave it as u8 to allow overflowing
+        let addr = self.read8_from_pc() + self.y;
+        self.addr = addr as u16;
+        self.value = self.read8(addr as u16);
+        self.ticks += 3;
+        if self.debug {
+            self.debug_line = format!("{} ${:02X},Y", self.get_opcode_name(), self.addr);
+        }
+    }
+
+    fn indirect(&mut self) {
+        let addr = self.read16_from_pc();
+        self.addr = addr;
+        let indirect_addr = self.read16(addr) as u16;
+        self.value = self.read8(indirect_addr);
+        self.pc += 1;
+        self.ticks += 2;
+        if self.debug {
+            self.debug_line = format!("{} (${:04X})", self.get_opcode_name(), self.addr);
         }
     }
 
@@ -240,7 +290,7 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
         let indirect_addr = self.read8(offset) as u16;
         self.value = self.read8(indirect_addr);
         self.pc += 1;
-        self.ticks += 2;
+        self.ticks += 3;
         if self.debug {
             self.debug_line = format!("{} (${:02X},X)", self.get_opcode_name(), self.addr);
         }
