@@ -95,6 +95,12 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
             absolute_x, 0x79, absolute_y, 0x61, indirect_x, 0x71, indirect_y
         );
 
+        opcode!(cpu, beq, 0xf0, relative);
+        opcode!(cpu, bne, 0xd0, relative);
+
+        opcode!(cpu, bcc, 0x90, relative);
+        opcode!(cpu, bcs, 0xb0, relative);
+
         opcode!(cpu, clc, 0x18, implied);
         opcode!(cpu, sec, 0x38, implied);
         opcode!(cpu, cli, 0x58, implied);
@@ -134,6 +140,17 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
         opcode!(cpu, rts, 0x60, implied);
 
         opcode!(cpu, sbc, 0xe9, immediate, 0xe5, zeropage);
+
+        opcode!(cpu, sta, 0x85, zeropage, 0x95, zeropage_x, 0x8d, absolute, 0x9d, absolute_x, 0x99, absolute_y, 0x81, indirect_x, 0x91, indirect_y);
+
+        opcode!(cpu, stx, 0x86, zeropage, 0x96, zeropage_x, 0x8e, absolute);
+
+        opcode!(cpu, txs, 0x9a, implied);
+        opcode!(cpu, tsx, 0xba, implied);
+        opcode!(cpu, pha, 0x48, implied);
+        opcode!(cpu, pla, 0x68, implied);
+        opcode!(cpu, php, 0x08, implied);
+        opcode!(cpu, plp, 0x28, implied);
 
         return cpu;
     }
@@ -516,6 +533,13 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
         }
     }
 
+    fn bne(&mut self) {
+        if !self.get_flag(ZERO) {
+            self.pc = self.addr;
+            self.ticks += 1;
+        }
+    }
+
     fn bcs(&mut self) {
         if self.get_flag(CARRY) {
             self.pc = self.addr;
@@ -543,6 +567,14 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
         let sp: u16 = 0x100 + (self.sp as u16);
         self.a = self.read8(sp);
         self.ticks += 2;
+    }
+
+    fn txs(&mut self) {
+        self.sp = self.x;
+    }
+
+    fn tsx(&mut self) {
+        self.x = self.sp;
     }
 
     fn php(&mut self) {

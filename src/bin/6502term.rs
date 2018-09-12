@@ -27,8 +27,10 @@ fn main() {
 
     let mut cpu = MOS6502::new(memory_controller);
     cpu.pc = 0x8000;
+    cpu.debug = true;
 
     loop {
         cpu.step();
+        //println!("[{:04X}] {}", cpu.debug_pc, cpu.debug_line);
     }
 }
