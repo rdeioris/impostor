@@ -35,6 +35,7 @@ pub struct MOS6502<T: AddressBusIO<u16, u8>> {
 
     pub debug: bool,
     pub debug_line: String,
+    pub debug_pc: u16,
 
     pub ticks: u64,
 
@@ -76,6 +77,8 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
             ticks: 0,
             opcode: noop,
             current_opcode: 0,
+
+            debug_pc: 0,
             debug_line: "".to_string(),
 
             opcodes: [noop; 256],
@@ -100,12 +103,21 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
         opcode!(cpu, cld, 0xd8, implied);
         opcode!(cpu, sed, 0xf8, implied);
 
-        opcode!(cpu, jmp, 0x4c, absolute, 0x6c, indirect); 
-        opcode!(cpu, jsr, 0x20, absolute); 
+        opcode!(cpu, jmp, 0x4c, absolute, 0x6c, indirect);
+        opcode!(cpu, jsr, 0x20, absolute);
 
-        opcode!(cpu, lda, 0xa9, immediate, 0xa5, zeropage, 0xb5, zeropage_x, 0xad, absolute, 0xbd, absolute_x, 0xb9, absolute_y, 0xa1, indirect_x, 0xb1, indirect_y); 
-        opcode!(cpu, ldx, 0xa2, immediate, 0xa6, zeropage, 0xb6, zeropage_y, 0xae, absolute, 0xbe, absolute_y); 
-        opcode!(cpu, ldy, 0xa0, immediate, 0xa4, zeropage, 0xb4, zeropage_x, 0xac, absolute, 0xbc, absolute_x); 
+        opcode!(
+            cpu, lda, 0xa9, immediate, 0xa5, zeropage, 0xb5, zeropage_x, 0xad, absolute, 0xbd,
+            absolute_x, 0xb9, absolute_y, 0xa1, indirect_x, 0xb1, indirect_y
+        );
+        opcode!(
+            cpu, ldx, 0xa2, immediate, 0xa6, zeropage, 0xb6, zeropage_y, 0xae, absolute, 0xbe,
+            absolute_y
+        );
+        opcode!(
+            cpu, ldy, 0xa0, immediate, 0xa4, zeropage, 0xb4, zeropage_x, 0xac, absolute, 0xbc,
+            absolute_x
+        );
 
         opcode!(cpu, nop, 0xea, implied);
 
@@ -376,6 +388,20 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
         self.set_flag(SIGN, x >> 7 == 1);
     }
 
+    fn dex(&mut self) {
+        self.x -= 1;
+        let x = self.x;
+        self.set_flag(ZERO, x == 0);
+        self.set_flag(SIGN, x >> 7 == 1);
+    }
+
+    fn dey(&mut self) {
+        self.y -= 1;
+        let y = self.y;
+        self.set_flag(ZERO, y == 0);
+        self.set_flag(SIGN, y >> 7 == 1);
+    }
+
     fn ldy(&mut self) {
         let y = self.value;
         self.y = y;
@@ -561,12 +587,16 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
     fn nop(&mut self) {}
 
     fn invalid(&mut self) {
-        panic!("invalid opcode {:02X}", self.current_opcode);
+        panic!(
+            "invalid opcode ${:02X} at ${:04X}",
+            self.current_opcode, self.debug_pc
+        );
     }
 }
 
 impl<T: AddressBusIO<u16, u8>> Clock for MOS6502<T> {
     fn step(&mut self) {
+        self.debug_pc = self.pc;
         let opcode = self.read8_from_pc();
         self.current_opcode = opcode;
         self.opcode = self.opcodes[opcode as usize];
