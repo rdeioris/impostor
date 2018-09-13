@@ -12,7 +12,6 @@ impl<T: Data> Rom<T> {
 
 impl<T: Address, U: Data> AddressBusIO<T, U> for Rom<U> {
     fn read(&mut self, address: T) -> U {
-        let address64: u64 = address.into();
-        return self.cells[address64 as usize];
+        return self.cells[address.to_u64().unwrap() as usize];
     }
 }

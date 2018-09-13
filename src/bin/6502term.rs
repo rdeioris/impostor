@@ -8,6 +8,7 @@ use impostor::mos6502::MOS6502;
 use impostor::ram::Ram;
 use impostor::rom::Rom;
 use impostor::unixterm::UnixTerm;
+use impostor::adapter::BusAdapter;
 
 use impostor::Clock;
 
@@ -18,7 +19,7 @@ fn main() {
 
     let ram = Ram::new(4096);
 
-    let term = UnixTerm::new();
+    let term = BusAdapter::new(Box::new(UnixTerm::new()));
 
     let mut memory_controller = MemoryController::new();
     memory_controller.map(0x0000, 0x0fff, Box::new(ram));

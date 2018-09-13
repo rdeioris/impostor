@@ -141,7 +141,10 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
 
         opcode!(cpu, sbc, 0xe9, immediate, 0xe5, zeropage);
 
-        opcode!(cpu, sta, 0x85, zeropage, 0x95, zeropage_x, 0x8d, absolute, 0x9d, absolute_x, 0x99, absolute_y, 0x81, indirect_x, 0x91, indirect_y);
+        opcode!(
+            cpu, sta, 0x85, zeropage, 0x95, zeropage_x, 0x8d, absolute, 0x9d, absolute_x, 0x99,
+            absolute_y, 0x81, indirect_x, 0x91, indirect_y
+        );
 
         opcode!(cpu, stx, 0x86, zeropage, 0x96, zeropage_x, 0x8e, absolute);
 
