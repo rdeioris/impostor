@@ -8,3 +8,6 @@ cpal = ">=0.8.2"
 timer = ">=0.2.0"
 chrono = ">=0.4.6"
 num-traits = ">=0.2.5"
+
+[profile.dev]
+overflow-checks = false

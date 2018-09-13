@@ -615,7 +615,6 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
         let pc_high: u16 = self.read8(sp + 1) as u16;
         self.sp += 1;
         self.pc = (pc_high << 8 | pc_low) + 1;
-        //println!("RTS: {:04X}", self.pc);
         self.ticks += 4;
     }
 

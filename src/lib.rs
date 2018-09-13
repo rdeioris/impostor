@@ -1,24 +1,15 @@
-/*pub trait Address: PartialOrd + PartialEq + Into<u64> + Copy + Default {}
-pub trait Data: Address {}
-
-impl<T: PartialOrd + PartialEq + Into<u64> + Copy + Default> Address for T {}
-impl<T: Address> Data for T {}
-*/
-
 extern crate num_traits;
 
-/*
-pub trait Address: num_traits::NumAssign + PartialOrd + Into<u64> + Copy {}
+use num_traits::{NumAssign, PrimInt, ToPrimitive};
+
+pub trait Address:
+    PrimInt + ToPrimitive + NumAssign
+{
+}
+
 pub trait Data: Address {}
 
-impl<T: num_traits::NumAssign + PartialOrd + Into<u64> + Copy> Address for T {}
-impl<T: Address> Data for T {}
-*/
-
-pub trait Address : num_traits::PrimInt + num_traits::ToPrimitive + num_traits::NumAssign {}
-pub trait Data : Address {}
-
-impl<T: num_traits::PrimInt + num_traits::ToPrimitive + num_traits::NumAssign> Address for T {}
+impl<T: PrimInt + ToPrimitive + NumAssign> Address for T {}
 impl<T: Address> Data for T {}
 
 pub trait AddressBusIO<T: Address, U: Data> {
@@ -32,8 +23,8 @@ pub trait Clock {
     fn step(&mut self);
 }
 
-pub mod memcontroller;
 pub mod adapter;
+pub mod memcontroller;
 pub mod mos6502;
 pub mod ram;
 pub mod rom;
@@ -51,8 +42,8 @@ mod tests {
     impl<T: Address, U: Data> Default for TestAddressBusIO<T, U> {
         fn default() -> TestAddressBusIO<T, U> {
             TestAddressBusIO {
-                address: T::default(),
-                data: U::default(),
+                address: T::zero(),
+                data: U::zero(),
             }
         }
     }

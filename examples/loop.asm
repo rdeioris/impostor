@@ -1,4 +1,12 @@
 .ORG $8000
 
-main:
-	JMP main
+; check overflow
+LDX #$00;
+DEX
+
+; activate timer
+LDA #$ef
+STA $d000
+
+loop:
+	JMP loop
