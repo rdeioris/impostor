@@ -1,16 +1,16 @@
 use {Address, AddressBusIO, Data};
 
-pub struct BusAdapter<T: Address, U: Data> {
-    connection: Box<AddressBusIO<T, U>>,
+pub struct BusAdapter<'a, T: Address, U: Data> {
+    connection: &'a mut AddressBusIO<T, U>,
 }
 
-impl<T: Address, U: Data> BusAdapter<T, U> {
-    pub fn new(bus: Box<AddressBusIO<T, U>>) -> BusAdapter<T, U> {
+impl<'a, T: Address, U: Data> BusAdapter<'a, T, U> {
+    pub fn new(bus: &'a mut AddressBusIO<T, U>) -> BusAdapter<'a, T, U> {
         BusAdapter { connection: bus }
     }
 }
 
-impl<T: Address, U: Data, V: Address, Z: Data> AddressBusIO<T, U> for BusAdapter<V, Z> {
+impl<'a, T: Address, U: Data, V: Address, Z: Data> AddressBusIO<T, U> for BusAdapter<'a, V, Z> {
     fn read(&mut self, address: T) -> U {
         U::from(self.connection.read(V::from(address).unwrap())).unwrap()
     }
