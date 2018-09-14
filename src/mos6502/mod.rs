@@ -5,6 +5,7 @@ const ZERO: u8 = 0x02;
 const INTERRUPT: u8 = 0x04;
 const DECIMAL: u8 = 0x08;
 const BRK: u8 = 0x10;
+const ALWAYS_SET: u8 = 0x10;
 const OVERFLOW: u8 = 0x40;
 const SIGN: u8 = 0x80;
 
@@ -85,7 +86,7 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
 
             debug: false,
 
-            status: 0x20,
+            status: ALWAYS_SET|INTERRUPT,
 
             bus: bus,
         };
@@ -644,6 +645,7 @@ impl<T: AddressBusIO<u16, u8>> Clock for MOS6502<T> {
 impl<T: AddressBusIO<u16, u8>+Sync+Send> Interrupt<u16> for MOS6502<T> {
     fn raise(&mut self, line: u16) {
         match line {
+            0x04 => if !self.get_flag(INTERRUPT) { println!("BRK") },
             _ => println!("raised interrupt on line {}", line),
         }
     }

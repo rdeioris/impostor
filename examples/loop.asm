@@ -4,6 +4,8 @@
 LDX #$00;
 DEX
 
+CLI ; enable IRQ
+
 ; activate timer
 LDA #$ef
 STA $d000
