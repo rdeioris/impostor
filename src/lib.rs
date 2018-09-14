@@ -1,15 +1,16 @@
 extern crate num_traits;
 
-use num_traits::{NumAssign, PrimInt, ToPrimitive};
+use num_traits::{NumAssign, PrimInt};
+pub use num_traits::AsPrimitive as As;
 
 pub trait Address:
-    PrimInt + ToPrimitive + NumAssign
+    PrimInt + NumAssign
 {
 }
 
 pub trait Data: Address {}
 
-impl<T: PrimInt + ToPrimitive + NumAssign> Address for T {}
+impl<T: PrimInt + NumAssign> Address for T {}
 impl<T: Address> Data for T {}
 
 pub trait AddressBusIO<T: Address, U: Data> {

@@ -1,4 +1,4 @@
-use {Address, AddressBusIO, Data};
+use {Address, AddressBusIO, Data, As};
 
 pub struct Rom<T: Data> {
     cells: Vec<T>,
@@ -10,8 +10,8 @@ impl<T: Data> Rom<T> {
     }
 }
 
-impl<T: Address, U: Data> AddressBusIO<T, U> for Rom<U> {
+impl<T: Address+As<usize>, U: Data> AddressBusIO<T, U> for Rom<U> {
     fn read(&mut self, address: T) -> U {
-        return self.cells[address.to_u64().unwrap() as usize];
+        return self.cells[address.as_()];
     }
 }
