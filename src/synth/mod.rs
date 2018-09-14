@@ -1,3 +1,4 @@
+use std::sync::{Arc, Mutex};
 use {Address, AddressBusIO, Data};
 
 extern crate cpal;
@@ -5,11 +6,11 @@ extern crate cpal;
 use std::thread;
 
 pub struct ChipTune<T: Address, U: Data> {
-    bus: Box<AddressBusIO<T, U>>,
+    bus: Arc<Mutex<AddressBusIO<T, U>+Send+Sync>>,
 }
 
 impl<T: Address, U: Data> ChipTune<T, U> {
-    pub fn new(bus: Box<AddressBusIO<T, U>>) -> ChipTune<T, U> {
+    pub fn new(bus: Arc<Mutex<AddressBusIO<T, U>+Send+Sync>>) -> ChipTune<T, U> {
         let mut chip_tune = ChipTune { bus: bus };
         chip_tune.run();
         return chip_tune;

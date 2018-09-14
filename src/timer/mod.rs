@@ -2,41 +2,57 @@ use std::sync::{Arc, Mutex};
 extern crate chrono;
 extern crate timer;
 
-use {Address, AddressBusIO, Data};
+use {Address, AddressBusIO, Data, Interrupt};
 
-pub struct SimpleTimer<T> {
+pub struct SimpleTimer<T: Data, U: Address+'static> {
     counter: Arc<Mutex<T>>,
-    timer: timer::Timer,
+    timer: Arc<Mutex<timer::Timer>>,
     guard: Arc<Mutex<Option<timer::Guard>>>,
+    interrupt: Arc<Mutex<Option<Arc<Mutex<Interrupt<U>>>>>>,
+    interrupt_line: Arc<Mutex<U>>,
 }
 
-impl<T: Data> SimpleTimer<T> {
-    pub fn new() -> SimpleTimer<T> {
+impl<T: Data, U: Address> SimpleTimer<T, U> {
+    pub fn new() -> SimpleTimer<T, U> {
         SimpleTimer {
             counter: Arc::new(Mutex::new(T::zero())),
-            timer: timer::Timer::new(),
+            timer: Arc::new(Mutex::new(timer::Timer::new())),
             guard: Arc::new(Mutex::new(None)),
+            interrupt: Arc::new(Mutex::new(None)),
+            interrupt_line: Arc::new(Mutex::new(U::zero())),
         }
+    }
+
+    pub fn connect_to_interrupt_line(&mut self, interrupt: Arc<Mutex<Interrupt<U>>>, line: U) {
+        *self.interrupt.lock().unwrap() = Some(interrupt);
+        *self.interrupt_line.lock().unwrap() = line;
     }
 }
 
-impl<T: Address> AddressBusIO<T, u8> for SimpleTimer<u8> {
-    fn read(&mut self, _address: T) -> u8 {
+impl<T: Address, U: Data+'static> AddressBusIO<T, U> for SimpleTimer<U, T> {
+    fn read(&mut self, _address: T) -> U {
         *self.counter.lock().unwrap()
     }
 
-    fn write(&mut self, _address: T, data: u8) {
-        println!("data = {}", data);
+    fn write(&mut self, _address: T, data: U) {
         *self.counter.lock().unwrap() = data;
+
         let counter = self.counter.clone();
         let guard = self.guard.clone();
-        *self.guard.lock().unwrap() = Some(self.timer.schedule_repeating(
+        let interrupt = self.interrupt.clone();
+        let interrupt_line = self.interrupt_line.clone();
+
+        *self.guard.lock().unwrap() = Some(self.timer.lock().unwrap().schedule_repeating(
             chrono::Duration::milliseconds(1),
             move || {
-                *counter.lock().unwrap() -= 1;
-                println!("timer: {}", *counter.lock().unwrap());
-                if *counter.lock().unwrap() == 0 {
+                *counter.lock().unwrap() -= U::one();
+                if *counter.lock().unwrap() == U::zero() {
                     *guard.lock().unwrap() = None;
+                    let connection = &mut *interrupt.lock().unwrap();
+                    match connection {
+                        Some(peer) => peer.lock().unwrap().raise(*interrupt_line.lock().unwrap()),
+                        None => (),
+                    }
                 }
             },
         ));

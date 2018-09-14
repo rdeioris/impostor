@@ -4,13 +4,13 @@ use num_traits::{NumAssign, PrimInt};
 pub use num_traits::AsPrimitive as As;
 
 pub trait Address:
-    PrimInt + NumAssign
+    PrimInt + NumAssign + Sync + Send
 {
 }
 
 pub trait Data: Address {}
 
-impl<T: PrimInt + NumAssign> Address for T {}
+impl<T: PrimInt + NumAssign + Sync + Send> Address for T {}
 impl<T: Address> Data for T {}
 
 pub trait AddressBusIO<T: Address, U: Data> {
@@ -22,6 +22,15 @@ pub trait AddressBusIO<T: Address, U: Data> {
 
 pub trait Clock {
     fn step(&mut self);
+}
+
+pub trait Interrupt<T: Address> : Sync + Send {
+    fn raise(&mut self, _line: T);
+}
+
+struct InterruptVoid {}
+impl<T: Address> Interrupt<T> for InterruptVoid {
+    fn raise(&mut self, _line: T) {}
 }
 
 pub mod adapter;

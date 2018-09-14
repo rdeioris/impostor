@@ -1,4 +1,4 @@
-use {AddressBusIO, Clock};
+use {AddressBusIO, Clock, Interrupt};
 
 const CARRY: u8 = 0x01;
 const ZERO: u8 = 0x02;
@@ -638,5 +638,13 @@ impl<T: AddressBusIO<u16, u8>> Clock for MOS6502<T> {
         (self.opcode.fetch)(self);
         // execute
         (self.opcode.fun)(self);
+    }
+}
+
+impl<T: AddressBusIO<u16, u8>+Sync+Send> Interrupt<u16> for MOS6502<T> {
+    fn raise(&mut self, line: u16) {
+        match line {
+            _ => println!("raised interrupt on line {}", line),
+        }
     }
 }

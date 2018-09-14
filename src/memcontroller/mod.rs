@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 
 use {Address, AddressBusIO, Data};
 
@@ -140,6 +141,59 @@ impl<T: Address, U: Data> AddressBusIO<T, U> for MemoryControllerShared<T, U> {
                 mapping
                     .connection
                     .borrow_mut()
+                    .write(address - mapping.start, value);
+                return;
+            }
+        }
+    }
+}
+
+
+struct AddressMappingThreadSafe<T: Address, U: Data> {
+    start: T,
+    end: T,
+    connection: Arc<Mutex<AddressBusIO<T, U>+Send+Sync>>,
+}
+
+pub struct MemoryControllerThreadSafe<T: Address, U: Data> {
+    mappings: Vec<AddressMappingThreadSafe<T, U>>,
+}
+
+impl<T: Address, U: Data> MemoryControllerThreadSafe<T, U> {
+    pub fn new() -> MemoryControllerThreadSafe<T, U> {
+        MemoryControllerThreadSafe {
+            mappings: Vec::new(),
+        }
+    }
+
+    pub fn map(&mut self, start: T, end: T, connection: Arc<Mutex<AddressBusIO<T, U>+Send+Sync>>) {
+        self.mappings.push(AddressMappingThreadSafe {
+            start: start,
+            end: end,
+            connection: connection,
+        });
+    }
+}
+
+impl<T: Address, U: Data> AddressBusIO<T, U> for MemoryControllerThreadSafe<T, U> {
+    fn read(&mut self, address: T) -> U {
+        for mapping in &mut self.mappings {
+            if address >= mapping.start && address <= mapping.end {
+                return mapping
+                    .connection
+                    .lock().unwrap()
+                    .read(address - mapping.start);
+            }
+        }
+        U::zero()
+    }
+
+    fn write(&mut self, address: T, value: U) {
+        for mapping in &mut self.mappings {
+            if address >= mapping.start && address <= mapping.end {
+                mapping
+                    .connection
+                    .lock().unwrap()
                     .write(address - mapping.start, value);
                 return;
             }
