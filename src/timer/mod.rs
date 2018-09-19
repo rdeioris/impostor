@@ -4,7 +4,7 @@ extern crate timer;
 
 use {Address, AddressBusIO, Data, Interrupt};
 
-pub struct SimpleTimer<T: Data, U: Address+'static> {
+pub struct SimpleTimer<T: Data, U: Address> {
     counter: Arc<Mutex<T>>,
     timer: Arc<Mutex<timer::Timer>>,
     guard: Arc<Mutex<Option<timer::Guard>>>,
@@ -29,7 +29,7 @@ impl<T: Data, U: Address> SimpleTimer<T, U> {
     }
 }
 
-impl<T: Address, U: Data+'static> AddressBusIO<T, U> for SimpleTimer<U, T> {
+impl<T: Address, U: Data> AddressBusIO<T, U> for SimpleTimer<U, T> {
     fn read(&mut self, _address: T) -> U {
         *self.counter.lock().unwrap()
     }

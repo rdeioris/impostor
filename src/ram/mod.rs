@@ -13,7 +13,7 @@ impl<T: Data> Ram<T> {
     }
 
     pub fn fill(&mut self, data: Vec<T>, offset: usize) {
-        let length = cmp::min(data.len(), self.cells.len());
+        let length = offset + cmp::min(data.len(), self.cells.len());
         for (index, i) in (offset..length).enumerate() {
             self.cells[i] = data[index];
         }

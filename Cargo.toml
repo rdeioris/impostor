@@ -1,13 +1,16 @@
 [package]
 name = "impostor"
 version = "0.1.0"
-authors = ["Roberto De Ioris <roberto@20tab.com>"]
+authors = ["Roberto De Ioris <roberto@unbit.it>"]
 
 [dependencies]
 cpal = ">=0.8.2"
 timer = ">=0.2.0"
 chrono = ">=0.4.6"
 num-traits = ">=0.2.5"
+glutin = ">=0.18"
+gl = ">=0.10.0"
+rand = ">=0.5.5"
 
 [profile.dev]
 overflow-checks = false
