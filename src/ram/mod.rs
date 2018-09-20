@@ -1,5 +1,5 @@
 use std::cmp;
-use {Address, AddressBusIO, Data, As};
+use {Address, AddressBusIO, As, Data};
 
 pub struct Ram<T: Data> {
     cells: Vec<T>,
@@ -20,7 +20,7 @@ impl<T: Data> Ram<T> {
     }
 }
 
-impl<T: Address+As<usize>, U: Data> AddressBusIO<T, U> for Ram<U> {
+impl<T: Address + As<usize>, U: Data> AddressBusIO<T, U> for Ram<U> {
     fn read(&mut self, address: T) -> U {
         return self.cells[address.as_()];
     }

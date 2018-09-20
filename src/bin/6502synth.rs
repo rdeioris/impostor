@@ -28,7 +28,10 @@ fn main() {
     let mut audio_memory_controller = MemoryControllerThreadSafe::new();
     audio_memory_controller.map(0x0000, 0x1fff, wave_ram.clone());
 
-    wave_ram.lock().unwrap().fill(fs::read(&*args[2]).unwrap(), 0);
+    wave_ram
+        .lock()
+        .unwrap()
+        .fill(fs::read(&*args[2]).unwrap(), 0);
 
     let chip_tune = ChipTune::new(Arc::new(Mutex::new(audio_memory_controller)));
 
@@ -41,8 +44,10 @@ fn main() {
 
     let cpu = Arc::new(Mutex::new(MOS6502::new(cpu_memory_controller)));
 
-    timer.lock().unwrap().connect_to_interrupt_line(cpu.clone(), 0x04);
-
+    timer
+        .lock()
+        .unwrap()
+        .connect_to_interrupt_line(cpu.clone(), 0x04);
 
     cpu.lock().unwrap().pc = 0xc000;
     cpu.lock().unwrap().debug = true;

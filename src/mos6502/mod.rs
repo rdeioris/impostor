@@ -86,7 +86,7 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
 
             debug: false,
 
-            status: ALWAYS_SET|INTERRUPT,
+            status: ALWAYS_SET | INTERRUPT,
 
             bus: bus,
         };
@@ -642,11 +642,14 @@ impl<T: AddressBusIO<u16, u8>> Clock for MOS6502<T> {
     }
 }
 
-impl<T: AddressBusIO<u16, u8>+Sync+Send> Interrupt<u16> for MOS6502<T> {
+impl<T: AddressBusIO<u16, u8> + Sync + Send> Interrupt<u16> for MOS6502<T> {
     fn raise(&mut self, line: u16) {
         println!("raise {}", line);
         match line {
-            0x04 => if !self.get_flag(INTERRUPT) { let jmp_addr = self.read16(0xfffe) ; println!("BRK to {:04X}", jmp_addr) },
+            0x04 => if !self.get_flag(INTERRUPT) {
+                let jmp_addr = self.read16(0xfffe);
+                println!("BRK to {:04X}", jmp_addr)
+            },
             _ => println!("raised interrupt on line {}", line),
         }
     }

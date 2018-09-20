@@ -3,12 +3,12 @@ use std::fs;
 
 extern crate impostor;
 
+use impostor::adapter::BusAdapter;
 use impostor::memcontroller::MemoryController;
 use impostor::mos6502::MOS6502;
 use impostor::ram::Ram;
 use impostor::rom::Rom;
 use impostor::unixterm::UnixTerm;
-use impostor::adapter::BusAdapter;
 
 use impostor::Clock;
 

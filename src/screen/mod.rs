@@ -5,7 +5,7 @@ use std::mem;
 
 use screen::glutin::GlContext;
 
-pub use screen::glutin::{WindowEvent, VirtualKeyCode, ElementState};
+pub use screen::glutin::{ElementState, VirtualKeyCode, WindowEvent};
 
 pub struct Screen {
     pub width: usize,
@@ -16,10 +16,11 @@ pub struct Screen {
 
 impl Screen {
     pub fn new(title: &'static str, width: usize, height: usize) -> Screen {
-
         let logical_size = glutin::dpi::LogicalSize::new(width as f64, height as f64);
 
-        let window = glutin::WindowBuilder::new().with_title(title).with_dimensions(logical_size);
+        let window = glutin::WindowBuilder::new()
+            .with_title(title)
+            .with_dimensions(logical_size);
 
         let context = glutin::ContextBuilder::new().with_vsync(true);
 
@@ -29,7 +30,7 @@ impl Screen {
 
         let screen = Screen {
             width,
-            height, 
+            height,
             event_loop,
             gl_window,
         };
@@ -45,14 +46,12 @@ impl Screen {
 
     pub fn swap(&self) {
         self.gl_window.swap_buffers().unwrap();
-    } 
+    }
 
     pub fn poll_events<F: FnMut(glutin::WindowEvent)>(&mut self, mut callback: F) {
-        self.event_loop.poll_events(|event| {
-            match event {
-                glutin::Event::WindowEvent{ event, .. } => callback(event),
-                _ => (),
-            }
+        self.event_loop.poll_events(|event| match event {
+            glutin::Event::WindowEvent { event, .. } => callback(event),
+            _ => (),
         });
     }
 
@@ -73,7 +72,6 @@ pub struct Framebuffer {
 
 impl Framebuffer {
     pub fn new(width: usize, height: usize) -> Framebuffer {
-
         let pixels = vec![0; width * height * 3];
 
         unsafe {
@@ -81,21 +79,64 @@ impl Framebuffer {
             let mut framebuffer = mem::uninitialized();
             gl::GenTextures(1, &mut texture);
             gl::BindTexture(gl::TEXTURE_2D, texture);
-            gl::TexImage2D(gl::TEXTURE_2D, 0, gl::RGB as i32, width as i32, height as i32, 0, gl::RGB, gl::UNSIGNED_BYTE, pixels.as_ptr() as *const _);
+            gl::TexImage2D(
+                gl::TEXTURE_2D,
+                0,
+                gl::RGB as i32,
+                width as i32,
+                height as i32,
+                0,
+                gl::RGB,
+                gl::UNSIGNED_BYTE,
+                pixels.as_ptr() as *const _,
+            );
 
             gl::GenFramebuffers(1, &mut framebuffer);
             gl::BindFramebuffer(gl::READ_FRAMEBUFFER, framebuffer);
-            gl::FramebufferTexture2D(gl::READ_FRAMEBUFFER, gl::COLOR_ATTACHMENT0, gl::TEXTURE_2D, texture, 0);
-            Framebuffer{width, height, texture, framebuffer, pixels}
+            gl::FramebufferTexture2D(
+                gl::READ_FRAMEBUFFER,
+                gl::COLOR_ATTACHMENT0,
+                gl::TEXTURE_2D,
+                texture,
+                0,
+            );
+            Framebuffer {
+                width,
+                height,
+                texture,
+                framebuffer,
+                pixels,
+            }
         }
     }
 
     pub fn blit(&self, x: usize, y: usize, width: usize, height: usize) {
         unsafe {
             gl::BindTexture(gl::TEXTURE_2D, self.texture);
-            gl::TexImage2D(gl::TEXTURE_2D, 0, gl::RGB as i32, 64, 32, 0, gl::RGB, gl::UNSIGNED_BYTE, self.pixels.as_ptr() as *const _);
+            gl::TexImage2D(
+                gl::TEXTURE_2D,
+                0,
+                gl::RGB as i32,
+                64,
+                32,
+                0,
+                gl::RGB,
+                gl::UNSIGNED_BYTE,
+                self.pixels.as_ptr() as *const _,
+            );
             gl::BindFramebuffer(gl::READ_FRAMEBUFFER, self.framebuffer);
-            gl::BlitFramebuffer(0, 0, self.width as i32, self.height as i32, x as i32, (y + height) as i32, (x + width) as i32, y as i32, gl::COLOR_BUFFER_BIT, gl::NEAREST);
+            gl::BlitFramebuffer(
+                0,
+                0,
+                self.width as i32,
+                self.height as i32,
+                x as i32,
+                (y + height) as i32,
+                (x + width) as i32,
+                y as i32,
+                gl::COLOR_BUFFER_BIT,
+                gl::NEAREST,
+            );
         }
     }
 }

@@ -13,8 +13,8 @@ pub struct Chip8<T: AddressBusIO<u16, u8>> {
 
     pub pc: u16,
 
-    pub delay_timer : u8,
-    pub sound_timer : u8,
+    pub delay_timer: u8,
+    pub sound_timer: u8,
 
     pub stack: [u16; 16],
     pub sp: u8,
@@ -73,7 +73,6 @@ impl<T: AddressBusIO<u16, u8>> Chip8<T> {
 
 impl<T: AddressBusIO<u16, u8>> Clock for Chip8<T> {
     fn step(&mut self) {
-
         let opcode = self.read16_from_pc();
 
         let nnn = opcode & 0x0fff;
@@ -83,18 +82,16 @@ impl<T: AddressBusIO<u16, u8>> Clock for Chip8<T> {
         let y = ((opcode & 0x00f0) >> 4) as usize;
 
         match opcode & 0xf000 {
-            0x0000 => {
-                match opcode & 0x00ff {
-                    0x00e0 => self.screen = [0; 64 * 32],
-                    0x00ee => {
-                        if self.sp == 0x0f {
-                            panic!("stack out of bounds");
-                        }
-                        self.sp += 1;
-                        self.pc = self.stack[self.sp as usize];
-                    },
-                    _ => panic!("invalid opcode ${:04X}", opcode),
+            0x0000 => match opcode & 0x00ff {
+                0x00e0 => self.screen = [0; 64 * 32],
+                0x00ee => {
+                    if self.sp == 0x0f {
+                        panic!("stack out of bounds");
+                    }
+                    self.sp += 1;
+                    self.pc = self.stack[self.sp as usize];
                 }
+                _ => panic!("invalid opcode ${:04X}", opcode),
             },
             0x1000 => self.pc = nnn,
             0x2000 => {
@@ -127,17 +124,17 @@ impl<T: AddressBusIO<u16, u8>> Clock for Chip8<T> {
                     let b = self.reg[y] as u16;
                     self.reg[0xf] = 0;
                     if a + b > 255 {
-                        self.reg[0xf] = 1; 
+                        self.reg[0xf] = 1;
                     }
                     self.reg[x] += self.reg[y];
-                },
+                }
                 0x0005 => {
                     self.reg[0xf] = 1;
                     if self.reg[y] > self.reg[x] {
-                        self.reg[0xf] = 0; 
+                        self.reg[0xf] = 0;
                     }
                     self.reg[x] -= self.reg[y];
-                },
+                }
                 0x0006 => {
                     self.reg[0xf] = self.reg[x] & 0x01;
                     self.reg[x] >>= 1;
@@ -167,7 +164,7 @@ impl<T: AddressBusIO<u16, u8>> Clock for Chip8<T> {
                             break;
                         }
                         let offset = pixel_y as usize * 64 + pixel_x as usize;
-                        
+
                         if pixels & (0x80 >> j) != 0 {
                             if self.screen[offset] == 1 {
                                 self.reg[0xf] = 0x01;
@@ -176,10 +173,14 @@ impl<T: AddressBusIO<u16, u8>> Clock for Chip8<T> {
                         }
                     }
                 }
-            },
+            }
             0xe000 => match opcode & 0x00ff {
-                0x9e => if self.keys[self.reg[x] as usize] { self.pc += 2 }, 
-                0xa1 => if !self.keys[self.reg[x] as usize] { self.pc += 2 },
+                0x9e => if self.keys[self.reg[x] as usize] {
+                    self.pc += 2
+                },
+                0xa1 => if !self.keys[self.reg[x] as usize] {
+                    self.pc += 2
+                },
                 _ => panic!("invalid opcode ${:04X}", opcode),
             },
             0xf000 => match opcode & 0x00ff {
@@ -195,26 +196,26 @@ impl<T: AddressBusIO<u16, u8>> Clock for Chip8<T> {
                             break;
                         }
                     }
-                },
+                }
                 0x0033 => {
                     let index = self.index;
                     let value = self.reg[x];
                     self.write8(index, value / 100);
                     self.write8(index + 1, (value / 10) % 10);
                     self.write8(index + 2, (value % 100) % 10);
-                },
+                }
                 0x0065 => {
                     let mut index = self.index;
                     for i in 0..=x {
                         self.reg[i] = self.read8(index);
                         index += 1;
                     }
-                },
+                }
                 0x001e => self.index += self.reg[x] as u16,
                 0x0029 => {
                     let offset = self.reg[x] as u16;
                     self.index = offset * 5;
-                },
+                }
                 _ => panic!("invalid opcode ${:04X}", opcode),
             },
             _ => panic!("invalid opcode ${:04X}", opcode),

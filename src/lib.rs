@@ -1,12 +1,9 @@
 extern crate num_traits;
 
-use num_traits::{NumAssign, PrimInt};
 pub use num_traits::AsPrimitive as As;
+use num_traits::{NumAssign, PrimInt};
 
-pub trait Address:
-    PrimInt + NumAssign + Sync + Send + 'static
-{
-}
+pub trait Address: PrimInt + NumAssign + Sync + Send + 'static {}
 
 pub trait Data: Address {}
 
@@ -24,20 +21,20 @@ pub trait Clock {
     fn step(&mut self);
 }
 
-pub trait Interrupt<T: Address> : Sync + Send {
+pub trait Interrupt<T: Address>: Sync + Send {
     fn raise(&mut self, _line: T);
 }
 
 pub mod adapter;
+pub mod chip8;
 pub mod memcontroller;
 pub mod mos6502;
-pub mod chip8;
 pub mod ram;
 pub mod rom;
+pub mod screen;
 pub mod synth;
 pub mod timer;
 pub mod unixterm;
-pub mod screen;
 
 #[cfg(test)]
 mod tests {

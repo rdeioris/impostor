@@ -1,4 +1,4 @@
-use {Address, AddressBusIO, Data, As};
+use {Address, AddressBusIO, As, Data};
 
 pub struct BusAdapter<'a, T: Address, U: Data> {
     connection: &'a mut AddressBusIO<T, U>,
@@ -10,7 +10,9 @@ impl<'a, T: Address, U: Data> BusAdapter<'a, T, U> {
     }
 }
 
-impl<'a, T: Address+As<V>, U: Data+As<Z>, V: Address+As<T>, Z: Data+As<U>> AddressBusIO<T, U> for BusAdapter<'a, V, Z> {
+impl<'a, T: Address + As<V>, U: Data + As<Z>, V: Address + As<T>, Z: Data + As<U>>
+    AddressBusIO<T, U> for BusAdapter<'a, V, Z>
+{
     fn read(&mut self, address: T) -> U {
         self.connection.read(address.as_()).as_()
     }
@@ -21,8 +23,8 @@ impl<'a, T: Address+As<V>, U: Data+As<Z>, V: Address+As<T>, Z: Data+As<U>> Addre
 
 #[cfg(test)]
 mod tests {
-    use {Address, AddressBusIO, Data};
     use adapter::BusAdapter;
+    use {Address, AddressBusIO, Data};
 
     struct TestAddressBusIO<T: Address, U: Data> {
         address: T,
@@ -44,7 +46,7 @@ mod tests {
 
     #[test]
     fn converto_to_lower() {
-        let mut bus : TestAddressBusIO<u8, u8> = TestAddressBusIO::default();
+        let mut bus: TestAddressBusIO<u8, u8> = TestAddressBusIO::default();
         let mut adapter = BusAdapter::new(&mut bus);
         assert_eq!(<AddressBusIO<u32, u32>>::read(&mut adapter, 0xaabbccdd), 1);
     }

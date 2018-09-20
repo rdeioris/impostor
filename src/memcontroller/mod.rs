@@ -148,11 +148,10 @@ impl<T: Address, U: Data> AddressBusIO<T, U> for MemoryControllerShared<T, U> {
     }
 }
 
-
 struct AddressMappingThreadSafe<T: Address, U: Data> {
     start: T,
     end: T,
-    connection: Arc<Mutex<AddressBusIO<T, U>+Send+Sync>>,
+    connection: Arc<Mutex<AddressBusIO<T, U> + Send + Sync>>,
 }
 
 pub struct MemoryControllerThreadSafe<T: Address, U: Data> {
@@ -166,7 +165,12 @@ impl<T: Address, U: Data> MemoryControllerThreadSafe<T, U> {
         }
     }
 
-    pub fn map(&mut self, start: T, end: T, connection: Arc<Mutex<AddressBusIO<T, U>+Send+Sync>>) {
+    pub fn map(
+        &mut self,
+        start: T,
+        end: T,
+        connection: Arc<Mutex<AddressBusIO<T, U> + Send + Sync>>,
+    ) {
         self.mappings.push(AddressMappingThreadSafe {
             start: start,
             end: end,
@@ -181,7 +185,8 @@ impl<T: Address, U: Data> AddressBusIO<T, U> for MemoryControllerThreadSafe<T, U
             if address >= mapping.start && address <= mapping.end {
                 return mapping
                     .connection
-                    .lock().unwrap()
+                    .lock()
+                    .unwrap()
                     .read(address - mapping.start);
             }
         }
@@ -193,7 +198,8 @@ impl<T: Address, U: Data> AddressBusIO<T, U> for MemoryControllerThreadSafe<T, U
             if address >= mapping.start && address <= mapping.end {
                 mapping
                     .connection
-                    .lock().unwrap()
+                    .lock()
+                    .unwrap()
                     .write(address - mapping.start, value);
                 return;
             }
