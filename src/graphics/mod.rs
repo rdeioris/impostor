@@ -3,9 +3,9 @@ extern crate glutin;
 
 use std::mem;
 
-use screen::glutin::GlContext;
+use graphics::glutin::GlContext;
 
-pub use screen::glutin::{ElementState, VirtualKeyCode, WindowEvent};
+pub use graphics::glutin::{ElementState, VirtualKeyCode, WindowEvent};
 
 pub struct Screen {
     pub width: usize,

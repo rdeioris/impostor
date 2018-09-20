@@ -8,7 +8,6 @@ use impostor::memcontroller::MemoryControllerThreadSafe;
 use impostor::mos6502::MOS6502;
 use impostor::ram::Ram;
 use impostor::rom::Rom;
-use impostor::synth::ChipTune;
 use impostor::timer::SimpleTimer;
 
 use impostor::Clock;
@@ -33,10 +32,8 @@ fn main() {
         .unwrap()
         .fill(fs::read(&*args[2]).unwrap(), 0);
 
-    let chip_tune = ChipTune::new(Arc::new(Mutex::new(audio_memory_controller)));
-
     cpu_memory_controller.map(0x0000, 0x7fff, Arc::new(Mutex::new(ram)));
-    cpu_memory_controller.map(0x9000, 0xafff, Arc::new(Mutex::new(chip_tune)));
+    //   cpu_memory_controller.map(0x9000, 0xafff, Arc::new(Mutex::new(chip_tune)));
     cpu_memory_controller.map(0xc000, 0xffff, Arc::new(Mutex::new(rom)));
 
     let timer = Arc::new(Mutex::new(SimpleTimer::new()));

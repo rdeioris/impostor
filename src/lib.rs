@@ -26,13 +26,14 @@ pub trait Interrupt<T: Address>: Sync + Send {
 }
 
 pub mod adapter;
+pub mod audio;
 pub mod chip8;
+pub mod graphics;
+pub mod input;
 pub mod memcontroller;
 pub mod mos6502;
 pub mod ram;
 pub mod rom;
-pub mod screen;
-pub mod synth;
 pub mod timer;
 pub mod unixterm;
 

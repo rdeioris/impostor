@@ -1,8 +1,10 @@
 extern crate impostor;
 
+use impostor::audio::Beeper;
 use impostor::chip8::Chip8;
+use impostor::graphics::{Framebuffer, Screen, WindowEvent};
+use impostor::input::{ElementState, VirtualKeyCode};
 use impostor::ram::Ram;
-use impostor::screen::{ElementState, Framebuffer, Screen, VirtualKeyCode, WindowEvent};
 
 use impostor::Clock;
 
@@ -42,6 +44,8 @@ fn main() {
     let mut screen = Screen::new("chip8", 1024, 512);
 
     let mut framebuffer = Framebuffer::new(64, 32);
+
+    let beeper = Beeper::new(880);
 
     let mut running = true;
     while running {
@@ -98,7 +102,7 @@ fn main() {
         if chip8.sound_timer > 0 {
             chip8.sound_timer -= 1;
             if chip8.sound_timer == 0 {
-                println!("BEEEEEP");
+                beeper.beep();
             }
         }
 
