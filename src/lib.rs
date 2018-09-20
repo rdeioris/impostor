@@ -37,6 +37,7 @@ pub mod rom;
 pub mod synth;
 pub mod timer;
 pub mod unixterm;
+pub mod screen;
 
 #[cfg(test)]
 mod tests {

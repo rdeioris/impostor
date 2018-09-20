@@ -9,7 +9,7 @@ pub struct Chip8<T: AddressBusIO<u16, u8>> {
 
     pub screen: [u8; 64 * 32],
 
-    pub keys: [u8; 16],
+    pub keys: [bool; 16],
 
     pub pc: u16,
 
@@ -19,8 +19,7 @@ pub struct Chip8<T: AddressBusIO<u16, u8>> {
     pub stack: [u16; 16],
     pub sp: u8,
 
-    pub waiting: bool,
-    pub waiting_reg: u8,
+    pub redraw: bool,
 }
 
 impl<T: AddressBusIO<u16, u8>> Chip8<T> {
@@ -34,9 +33,8 @@ impl<T: AddressBusIO<u16, u8>> Chip8<T> {
             delay_timer: 0,
             sound_timer: 0,
             screen: [0; 64 * 32],
-            keys: [0; 16],
-            waiting: false,
-            waiting_reg: 0,
+            keys: [false; 16],
+            redraw: false,
             bus: bus,
         }
     }
@@ -75,15 +73,6 @@ impl<T: AddressBusIO<u16, u8>> Chip8<T> {
 
 impl<T: AddressBusIO<u16, u8>> Clock for Chip8<T> {
     fn step(&mut self) {
-        if self.waiting {
-            for i in 0..16 {
-                if self.keys[i] == 1 {
-                    self.waiting = false;
-                    self.reg[self.waiting_reg as usize] = i as u8;
-                }
-            }
-            return;
-        }
 
         let opcode = self.read16_from_pc();
 
@@ -162,6 +151,7 @@ impl<T: AddressBusIO<u16, u8>> Clock for Chip8<T> {
             0xb000 => self.pc = nnn + (self.reg[0] as u16),
             0xc000 => self.reg[x] = rand::random::<u8>() & nn,
             0xd000 => {
+                self.redraw = true;
                 // first clear collision reg
                 self.reg[0xf] = 0x00;
                 for i in 0..n {
@@ -176,7 +166,7 @@ impl<T: AddressBusIO<u16, u8>> Clock for Chip8<T> {
                         if pixel_x >= 64 {
                             break;
                         }
-                        let offset = (pixel_y * 64 + pixel_x) as usize;
+                        let offset = pixel_y as usize * 64 + pixel_x as usize;
                         
                         if pixels & (0x80 >> j) != 0 {
                             if self.screen[offset] == 1 {
@@ -188,8 +178,8 @@ impl<T: AddressBusIO<u16, u8>> Clock for Chip8<T> {
                 }
             },
             0xe000 => match opcode & 0x00ff {
-                0x9e => if self.keys[self.reg[x] as usize] == 1 { self.pc += 2 }, 
-                0xa1 => if self.keys[self.reg[x] as usize] == 0 { self.pc += 2 },
+                0x9e => if self.keys[self.reg[x] as usize] { self.pc += 2 }, 
+                0xa1 => if !self.keys[self.reg[x] as usize] { self.pc += 2 },
                 _ => panic!("invalid opcode ${:04X}", opcode),
             },
             0xf000 => match opcode & 0x00ff {
@@ -197,8 +187,14 @@ impl<T: AddressBusIO<u16, u8>> Clock for Chip8<T> {
                 0x0015 => self.delay_timer = self.reg[x],
                 0x0018 => self.sound_timer = self.reg[x],
                 0x000a => {
-                    self.waiting = true;
-                    self.waiting_reg = x as u8;
+                    self.pc -= 2;
+                    for i in 0..16 {
+                        if self.keys[i] {
+                            self.reg[x] = i as u8;
+                            self.pc += 2;
+                            break;
+                        }
+                    }
                 },
                 0x0033 => {
                     let index = self.index;

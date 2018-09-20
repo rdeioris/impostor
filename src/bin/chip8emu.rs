@@ -1,20 +1,13 @@
-extern crate gl;
-extern crate glutin;
 extern crate impostor;
 
 use impostor::chip8::Chip8;
 use impostor::ram::Ram;
+use impostor::screen::{Screen, Framebuffer, WindowEvent, VirtualKeyCode, ElementState};
 
 use impostor::Clock;
 
 use std::env;
 use std::fs;
-
-use std::mem;
-
-
-use glutin::dpi::*;
-use glutin::GlContext;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -45,46 +38,42 @@ fn main() {
 
     ram.fill(fs::read(&*args[1]).unwrap(), 0x200);
 
-    let mut events_loop = glutin::EventsLoop::new();
-
     let mut chip8 = Chip8::new(ram);
 
-    let window = glutin::WindowBuilder::new()
-        .with_title("Hello, world!")
-        .with_dimensions(LogicalSize::new(1024.0, 512.0));
+    let mut screen = Screen::new("chip8", 1024, 512);
 
-    let context = glutin::ContextBuilder::new()
-        .with_vsync(true);
-
-    let gl_window = glutin::GlWindow::new(window, context, &events_loop).unwrap();
-
-    let mut pixels = [0; 64 * 32 * 3];
-
-    unsafe {
-        gl_window.make_current().unwrap();
-    }
-
-    unsafe {
-        gl::load_with(|symbol| gl_window.get_proc_address(symbol) as *const _);
-        gl::ClearColor(0.0, 0.0, 0.0, 1.0);
-
-        let mut screen_texture = mem::uninitialized();
-        gl::GenTextures(1, &mut screen_texture);
-        gl::BindTexture(gl::TEXTURE_2D, screen_texture);
-        gl::TexImage2D(gl::TEXTURE_2D, 0, gl::RGB as i32, 64, 32, 0, gl::RGB, gl::UNSIGNED_BYTE, pixels.as_ptr() as *const _);
-
-        let mut framebuffer = mem::uninitialized();
-        gl::GenFramebuffers(1, &mut framebuffer);
-        gl::BindFramebuffer(gl::READ_FRAMEBUFFER, framebuffer);
-        gl::FramebufferTexture2D(gl::READ_FRAMEBUFFER, gl::COLOR_ATTACHMENT0, gl::TEXTURE_2D, screen_texture, 0);
-    }
+    let mut framebuffer = Framebuffer::new(64, 32);
 
     let mut running = true;
     while running {
 
-        events_loop.poll_events(|_event| {
-        });
-
+        screen.poll_events(|event| {
+            match event {
+                    WindowEvent::CloseRequested => running = false,
+                    WindowEvent::KeyboardInput { input, .. } => {
+                        match input.virtual_keycode {
+                            Some(VirtualKeyCode::Escape) => running = false,
+                            Some(VirtualKeyCode::Key0) => chip8.keys[0x0] = input.state == ElementState::Pressed,
+                            Some(VirtualKeyCode::Key1) => chip8.keys[0x1] = input.state == ElementState::Pressed,
+                            Some(VirtualKeyCode::Key2) => chip8.keys[0x2] = input.state == ElementState::Pressed,
+                            Some(VirtualKeyCode::Key3) => chip8.keys[0x3] = input.state == ElementState::Pressed,
+                            Some(VirtualKeyCode::Key4) => chip8.keys[0x4] = input.state == ElementState::Pressed,
+                            Some(VirtualKeyCode::Key5) => chip8.keys[0x5] = input.state == ElementState::Pressed,
+                            Some(VirtualKeyCode::Key6) => chip8.keys[0x6] = input.state == ElementState::Pressed,
+                            Some(VirtualKeyCode::Key7) => chip8.keys[0x7] = input.state == ElementState::Pressed,
+                            Some(VirtualKeyCode::Key8) => chip8.keys[0x8] = input.state == ElementState::Pressed,
+                            Some(VirtualKeyCode::Key9) => chip8.keys[0x9] = input.state == ElementState::Pressed,
+                            Some(VirtualKeyCode::A) => chip8.keys[0xa] = input.state == ElementState::Pressed,
+                            Some(VirtualKeyCode::B) => chip8.keys[0xb] = input.state == ElementState::Pressed,
+                            Some(VirtualKeyCode::C) => chip8.keys[0xc] = input.state == ElementState::Pressed,
+                            Some(VirtualKeyCode::D) => chip8.keys[0xd] = input.state == ElementState::Pressed,
+                            Some(VirtualKeyCode::E) => chip8.keys[0xe] = input.state == ElementState::Pressed,
+                            Some(VirtualKeyCode::F) => chip8.keys[0xf] = input.state == ElementState::Pressed,
+                            _ => (),
+                        }
+                    },
+                    _ => (),
+            }});
         chip8.step();
 
 
@@ -99,22 +88,20 @@ fn main() {
             }
         }
 
-        for y in 0..32 {
-            for x in 0..64 {
-                let screen_offset = y * 64 + x;
-                let pixels_offset = ((31 - y) * 64 + x) * 3;
-                pixels[pixels_offset] = chip8.screen[screen_offset] * 255;
-                pixels[pixels_offset+1] = pixels[pixels_offset];
-                pixels[pixels_offset+2] = pixels[pixels_offset];
+        if chip8.redraw {
+            for y in 0..32 {
+                for x in 0..64 {
+                    let screen_offset = y * 64 + x;
+                    let pixels_offset = (y * 64 + x) * 3;
+                    framebuffer.pixels[pixels_offset] = chip8.screen[screen_offset] * 255;
+                    framebuffer.pixels[pixels_offset+1] = framebuffer.pixels[pixels_offset];
+                    framebuffer.pixels[pixels_offset+2] = framebuffer.pixels[pixels_offset];
+                }
             }
+            framebuffer.blit(0, 0, screen.width, screen.height);
+            screen.swap();
+            chip8.redraw = false;
         }
 
-        unsafe {
-            gl::TexImage2D(gl::TEXTURE_2D, 0, gl::RGB as i32, 64, 32, 0, gl::RGB, gl::UNSIGNED_BYTE, pixels.as_ptr() as *const _);
-            gl::Clear(gl::COLOR_BUFFER_BIT);
-            gl::BlitFramebuffer(0, 0, 64, 32, 0, 0, 1024, 512, gl::COLOR_BUFFER_BIT, gl::NEAREST);
-        }
-
-        gl_window.swap_buffers().unwrap();
     }
 }
