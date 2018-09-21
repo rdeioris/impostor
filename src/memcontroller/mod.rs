@@ -10,14 +10,24 @@ struct AddressMapping<'a, T: Address, U: Data> {
     connection: &'a mut AddressBusIO<T, U>,
 }
 
+struct MirrorMapping<T:Address> {
+    start: T,
+    end: T,
+    mirror: T,
+}
+
 pub struct MemoryController<'a, T: Address, U: Data> {
     mappings: Vec<AddressMapping<'a, T, U>>,
+    mirrors: Vec<MirrorMapping<T>>, 
+    pub panic_on_no_map: bool,
 }
 
 impl<'a, T: Address, U: Data> MemoryController<'a, T, U> {
     pub fn new() -> MemoryController<'a, T, U> {
         MemoryController {
             mappings: Vec::new(),
+            mirrors: Vec::new(),
+            panic_on_no_map: false,
         }
     }
 
@@ -28,24 +38,54 @@ impl<'a, T: Address, U: Data> MemoryController<'a, T, U> {
             connection: connection,
         });
     }
+
+    pub fn mirror(&mut self, start: T, end: T, mirror: T) {
+        self.mirrors.push(MirrorMapping{
+            start,
+            end,
+            mirror,
+        });
+    }
 }
 
 impl<'a, T: Address, U: Data> AddressBusIO<T, U> for MemoryController<'a, T, U> {
     fn read(&mut self, address: T) -> U {
-        for mapping in &mut self.mappings {
-            if address >= mapping.start && address <= mapping.end {
-                return mapping.connection.read(address - mapping.start);
+        let mut cleaned_address = address;
+        // first check for mirrors
+        for mirror in &self.mirrors {
+            if address >= mirror.start && address <= mirror.end {
+                cleaned_address = mirror.mirror + address - mirror.start;
+                break;
             }
+        }
+        for mapping in &mut self.mappings {
+            if cleaned_address >= mapping.start && cleaned_address <= mapping.end {
+                return mapping.connection.read(cleaned_address - mapping.start);
+            }
+        }
+        if self.panic_on_no_map {
+            panic!("unknown mapping ${:X}", address);
         }
         U::zero()
     }
 
     fn write(&mut self, address: T, value: U) {
+        let mut cleaned_address = address;
+        // first check for mirrors
+        for mirror in &self.mirrors {
+            if address >= mirror.start && address <= mirror.end {
+                cleaned_address = mirror.mirror + address - mirror.start;
+                break;
+            }
+        }
         for mapping in &mut self.mappings {
-            if address >= mapping.start && address <= mapping.end {
-                mapping.connection.write(address - mapping.start, value);
+            if cleaned_address >= mapping.start && cleaned_address <= mapping.end {
+                mapping.connection.write(cleaned_address - mapping.start, value);
                 return;
             }
+        }
+        if self.panic_on_no_map {
+            panic!("unknown mapping ${:X}", address);
         }
     }
 }

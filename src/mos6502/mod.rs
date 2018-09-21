@@ -96,11 +96,44 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
             absolute_x, 0x79, absolute_y, 0x61, indirect_x, 0x71, indirect_y
         );
 
+        opcode!(cpu, bit, 0x24, zeropage, 0x2c, absolute);
+
+        opcode!(
+            cpu, and, 0x29, immediate, 0x25, zeropage, 0x35, zeropage_x, 0x2d, absolute, 0x3d,
+            absolute_x, 0x39, absolute_y, 0x21, indirect_x, 0x31, indirect_y
+        );
+
+        opcode!(cpu, asl_a, 0x0a, accumulator);
+
+        opcode!(cpu, lsr_a, 0x4a, accumulator);
+
+        opcode!(cpu, asl, 0x06, zeropage, 0x16, zeropage_x, 0x0e, absolute, 0x1e, absolute_x);
+
+        opcode!(cpu, lsr, 0x46, zeropage, 0x56, zeropage_x, 0x4e, absolute, 0x5e, absolute_x);
+
+        opcode!(
+            cpu, ora, 0x09, immediate, 0x05, zeropage, 0x15, zeropage_x, 0x0d, absolute, 0x1d,
+            absolute_x, 0x19, absolute_y, 0x01, indirect_x, 0x11, indirect_y
+        );
+
+        opcode!(cpu, bpl, 0x10, relative);
+        opcode!(cpu, bmi, 0x30, relative);
+
+        opcode!(cpu, bvc, 0x50, relative);
+        opcode!(cpu, bvs, 0x70, relative);
+
         opcode!(cpu, beq, 0xf0, relative);
         opcode!(cpu, bne, 0xd0, relative);
 
         opcode!(cpu, bcc, 0x90, relative);
         opcode!(cpu, bcs, 0xb0, relative);
+
+        opcode!(cpu, cmp, 0xc9, immediate, 0xc5, zeropage, 0xd5, zeropage_x, 0xcd, absolute, 0xdd, absolute_x, 0xd9, absolute_y, 0xc1, indirect_x, 0xd1, indirect_y);
+        opcode!(cpu, cpx, 0xe0, immediate, 0xe4, zeropage, 0xec, absolute);
+        opcode!(cpu, cpy, 0xc0, immediate, 0xc4, zeropage, 0xcc, absolute);
+
+        opcode!(cpu, dec, 0xc6, zeropage, 0xd6, zeropage_x, 0xce, absolute, 0xde, absolute_x);
+        opcode!(cpu, inc, 0xe6, zeropage, 0xf6, zeropage_x, 0xee, absolute, 0xfe, absolute_x);
 
         opcode!(cpu, clc, 0x18, implied);
         opcode!(cpu, sec, 0x38, implied);
@@ -148,6 +181,7 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
         );
 
         opcode!(cpu, stx, 0x86, zeropage, 0x96, zeropage_x, 0x8e, absolute);
+        opcode!(cpu, sty, 0x84, zeropage, 0x94, zeropage_x, 0x8c, absolute);
 
         opcode!(cpu, txs, 0x9a, implied);
         opcode!(cpu, tsx, 0xba, implied);
@@ -220,6 +254,13 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
         self.ticks += 2;
         if self.debug {
             self.debug_line = format!("{} #${:02X}", self.get_opcode_name(), self.value);
+        }
+    }
+
+    fn accumulator(&mut self) {
+        self.ticks += 2;
+        if self.debug {
+            self.debug_line = format!("{}", self.get_opcode_name());
         }
     }
 
@@ -423,6 +464,22 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
         self.set_flag(SIGN, y >> 7 == 1);
     }
 
+    fn dec(&mut self) {
+        let value = self.value - 1;
+        let addr = self.addr;
+        self.write8(addr, value); 
+        self.set_flag(ZERO, value == 0);
+        self.set_flag(SIGN, value >> 7 == 1);
+    }
+
+    fn inc(&mut self) {
+        let value = self.value + 1;
+        let addr = self.addr;
+        self.write8(addr, value); 
+        self.set_flag(ZERO, value == 0);
+        self.set_flag(SIGN, value >> 7 == 1);
+    }
+
     fn ldy(&mut self) {
         let y = self.value;
         self.y = y;
@@ -457,6 +514,59 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
 
     fn and(&mut self) {
         self.a &= self.value;
+        let a = self.a;
+        self.set_flag(ZERO, a == 0);
+        self.set_flag(SIGN, a >> 7 == 1);
+    }
+
+    fn bit(&mut self) {
+        let a = self.a;
+        let value = self.value;
+        self.set_flag(ZERO, (a & value) == 0);
+        self.set_flag(SIGN, (value & 0x80) != 0);
+        self.set_flag(OVERFLOW, (value & 0x40) != 0);
+    }
+
+    fn asl_a(&mut self) {
+        let mut a = self.a;
+        self.set_flag(CARRY, (a &0x01) == 0x01);
+        a >>= 1;
+        self.a = a;
+        self.set_flag(ZERO, a == 0);
+        self.set_flag(SIGN, a >> 7 == 1);
+    }
+
+    fn lsr_a(&mut self) {
+        let mut a = self.a;
+        self.set_flag(CARRY, (a >> 7) == 0x01);
+        a <<= 1;
+        self.a = a;
+        self.set_flag(ZERO, a == 0);
+        self.set_flag(SIGN, a >> 7 == 1);
+    }
+
+    fn asl(&mut self) {
+        let mut value = self.value;
+        self.set_flag(CARRY, (value >> 7) == 0x01);
+        value <<= 1;
+        let addr = self.addr;
+        self.write8(addr, value);
+        self.set_flag(ZERO, value == 0);
+        self.set_flag(SIGN, value >> 7 == 1);
+    }
+
+    fn lsr(&mut self) {
+        let mut value = self.value;
+        self.set_flag(CARRY, (value & 0x01) == 0x01);
+        value >>= 1;
+        let addr = self.addr;
+        self.write8(addr, value);
+        self.set_flag(ZERO, value == 0);
+        self.set_flag(SIGN, value >> 7 == 1);
+    }
+
+    fn ora(&mut self) {
+        self.a |= self.value;
         let a = self.a;
         self.set_flag(ZERO, a == 0);
         self.set_flag(SIGN, a >> 7 == 1);
@@ -537,6 +647,34 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
         }
     }
 
+    fn bmi(&mut self) {
+        if self.get_flag(SIGN) {
+            self.pc = self.addr;
+            self.ticks += 1;
+        }
+    }
+
+    fn bpl(&mut self) {
+        if !self.get_flag(SIGN) {
+            self.pc = self.addr;
+            self.ticks += 1;
+        }
+    }
+
+    fn bvc(&mut self) {
+        if !self.get_flag(OVERFLOW) {
+            self.pc = self.addr;
+            self.ticks += 1;
+        }
+    }
+
+    fn bvs(&mut self) {
+        if self.get_flag(OVERFLOW) {
+            self.pc = self.addr;
+            self.ticks += 1;
+        }
+    }
+
     fn bne(&mut self) {
         if !self.get_flag(ZERO) {
             self.pc = self.addr;
@@ -556,6 +694,30 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
             self.pc = self.addr;
             self.ticks += 1;
         }
+    }
+
+    fn cmp(&mut self) {
+        let a = self.a;
+        let value = self.value;
+        self.set_flag(CARRY, a >= value);
+        self.set_flag(ZERO, a == value);
+        self.set_flag(SIGN, a < value);
+    }
+
+    fn cpx(&mut self) {
+        let x = self.x;
+        let value = self.value;
+        self.set_flag(CARRY, x >= value);
+        self.set_flag(ZERO, x == value);
+        self.set_flag(SIGN, x < value);
+    }
+
+    fn cpy(&mut self) {
+        let y = self.y;
+        let value = self.value;
+        self.set_flag(CARRY, y >= value);
+        self.set_flag(ZERO, y == value);
+        self.set_flag(SIGN, y < value);
     }
 
     fn pha(&mut self) {

@@ -3,11 +3,13 @@ extern crate num_traits;
 pub use num_traits::AsPrimitive as As;
 use num_traits::{NumAssign, PrimInt};
 
-pub trait Address: PrimInt + NumAssign + Sync + Send + 'static {}
+use std::fmt::{Display, LowerHex, UpperHex};
+
+pub trait Address: PrimInt + NumAssign + Display + LowerHex + UpperHex + Sync + Send + 'static {}
 
 pub trait Data: Address {}
 
-impl<T: PrimInt + NumAssign + Sync + Send + 'static> Address for T {}
+impl<T: PrimInt + NumAssign + Display + LowerHex + UpperHex + Sync + Send + 'static> Address for T {}
 impl<T: Address> Data for T {}
 
 pub trait AddressBusIO<T: Address, U: Data> {
