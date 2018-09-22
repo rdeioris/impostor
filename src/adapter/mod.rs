@@ -1,6 +1,6 @@
 use {Address, AddressBusIO, As, Data};
 
-pub struct BusAdapter<'a, T: Address, U: Data> {
+pub struct BusAdapter<'a, T: Address+'a, U: Data+'a> {
     connection: &'a mut AddressBusIO<T, U>,
 }
 

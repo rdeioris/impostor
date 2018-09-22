@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 
 use {Address, AddressBusIO, Data};
 
-struct AddressMapping<'a, T: Address, U: Data> {
+struct AddressMapping<'a, T: Address+'a, U: Data+'a> {
     start: T,
     end: T,
     connection: &'a mut AddressBusIO<T, U>,
@@ -16,7 +16,7 @@ struct MirrorMapping<T:Address> {
     mirror: T,
 }
 
-pub struct MemoryController<'a, T: Address, U: Data> {
+pub struct MemoryController<'a, T: Address+'a, U: Data+'a> {
     mappings: Vec<AddressMapping<'a, T, U>>,
     mirrors: Vec<MirrorMapping<T>>, 
     pub panic_on_no_map: bool,
