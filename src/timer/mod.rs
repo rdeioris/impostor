@@ -29,7 +29,7 @@ impl<T: Data, U: Address> SimpleTimer<T, U> {
     }
 }
 
-impl<T: Address+'static, U: Data+'static> AddressBusIO<T, U> for SimpleTimer<U, T> {
+impl<T: Address, U: Data> AddressBusIO<T, U> for SimpleTimer<U, T> {
     fn read(&mut self, _address: T) -> U {
         *self.counter.lock().unwrap()
     }
