@@ -128,7 +128,7 @@ impl Framebuffer {
             gl::BindFramebuffer(gl::READ_FRAMEBUFFER, self.framebuffer);
             gl::BlitFramebuffer(
                 0,
-		0,
+                0,
                 self.width as i32,
                 self.height as i32,
                 -(x as i32),

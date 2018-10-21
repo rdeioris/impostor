@@ -2,13 +2,6 @@ use std::io::Read;
 use std::io::Write;
 use std::io::{stderr, stdin, stdout, Stderr, Stdin, Stdout};
 use std::process;
-use std::time::{SystemTime, UNIX_EPOCH};
-
-/*
-
-TODO: remove time management
-
-*/
 
 use AddressBusIO;
 
@@ -35,19 +28,9 @@ impl UnixTerm {
 
 impl AddressBusIO<u8, u8> for UnixTerm {
     fn read(&mut self, address: u8) -> u8 {
-        let now = || -> u32 {
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_secs() as u32
-        };
         match address {
             0x01 => self.last_stdout,
             0x02 => self.last_stderr,
-            0x04 => ((now() >> 24) & 0xff) as u8,
-            0x05 => ((now() >> 16) & 0xff) as u8,
-            0x06 => ((now() >> 8) & 0xff) as u8,
-            0x07 => now() as u8,
             _ => 0,
         }
     }

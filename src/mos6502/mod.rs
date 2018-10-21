@@ -863,9 +863,7 @@ impl<T: AddressBusIO<u16, u8>> Interrupt<u16> for MOS6502<T> {
             4 => if !self.get_flag(INTERRUPT) {
                 self.interrupt(0xfffe)
             },
-            6 => {
-                self.interrupt(0xfffa)
-            },
+            6 => self.interrupt(0xfffa),
             40 => if !self.get_flag(INTERRUPT) {
                 self.reset(0xfffc)
             },

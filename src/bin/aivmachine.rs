@@ -28,7 +28,8 @@ use std::rc::Rc;
 struct AivFrameBuffer {
     framebuffer: Framebuffer,
     screen: Screen,
-    current_line: u8,
+    current_row: u8,
+    current_col: u8,
     scroll_x: u8,
     scroll_y: u8,
 }
@@ -38,7 +39,8 @@ impl AivFrameBuffer {
         AivFrameBuffer {
             screen,
             framebuffer,
-            current_line: 0,
+            current_row: 0,
+            current_col: 0,
             scroll_x: 0,
             scroll_y: 0,
         }
@@ -49,12 +51,8 @@ impl AivFrameBuffer {
         let x = self.scroll_x as usize * (self.screen.width / self.framebuffer.width);
         let y = self.scroll_y as usize * (self.screen.height / self.framebuffer.height);
         self.screen.clear();
-        self.framebuffer.blit(
-            x,
-            y,
-            self.screen.width,
-            self.screen.height,
-        );
+        self.framebuffer
+            .blit(x, y, self.screen.width, self.screen.height);
         self.screen.swap();
         self.screen.poll_events(|event| match event {
             WindowEvent::CloseRequested => exit = true,
@@ -68,7 +66,7 @@ impl AddressBusIO<u16, u8> for AivFrameBuffer {
     fn write(&mut self, address: u16, value: u8) {
         if address < 256 {
             let pixel_address: usize =
-                (self.current_line as usize * self.framebuffer.width * 3) + (address as usize * 3);
+                (self.current_row as usize * self.framebuffer.width * 3) + (address as usize * 3);
             let color = MODE13H_PALETTE[value as usize];
             self.framebuffer.pixels[pixel_address] = (color >> 16) as u8;
             self.framebuffer.pixels[pixel_address + 1] = ((color >> 8) & 0xff) as u8;
@@ -76,7 +74,7 @@ impl AddressBusIO<u16, u8> for AivFrameBuffer {
             return;
         }
         match address {
-            256 => self.current_line = value,
+            256 => self.current_row = value,
             257 => {
                 for y in 0..self.framebuffer.height {
                     for x in 0..self.framebuffer.width {
@@ -90,6 +88,15 @@ impl AddressBusIO<u16, u8> for AivFrameBuffer {
             }
             258 => self.scroll_x = value,
             259 => self.scroll_y = value,
+            260 => self.current_col = value,
+            261 => {
+                let pixel_address: usize = (self.current_row as usize * self.framebuffer.width * 3)
+                    + (self.current_col as usize * 3);
+                let color = MODE13H_PALETTE[value as usize];
+                self.framebuffer.pixels[pixel_address] = (color >> 16) as u8;
+                self.framebuffer.pixels[pixel_address + 1] = ((color >> 8) & 0xff) as u8;
+                self.framebuffer.pixels[pixel_address + 2] = (color & 0xff) as u8;
+            }
             _ => (),
         }
     }
@@ -97,9 +104,10 @@ impl AddressBusIO<u16, u8> for AivFrameBuffer {
     fn read(&mut self, address: u16) -> u8 {
         let mut value = 0;
         match address {
-            256 => value = self.current_line,
+            256 => value = self.current_row,
             258 => value = self.scroll_x,
             259 => value = self.scroll_y,
+            260 => value = self.current_col,
             _ => (),
         }
         return value;
@@ -164,8 +172,8 @@ fn main() {
 
     let mut memory_controller = MemoryControllerSmart::new();
     memory_controller.map(0x0000, 0x1fff, &mut ram);
-    memory_controller.map(0x2000, 0x2007, &mut term);
-    memory_controller.map(0x2008, 0x2008, &mut beeper);
+    memory_controller.map(0x2000, 0x2003, &mut term);
+    memory_controller.map(0x2004, 0x2004, &mut beeper);
 
     let borrowed_aiv_framebuffer = Rc::clone(&aiv_framebuffer);
     memory_controller.map_shared(0x4000, 0x41ff, borrowed_aiv_framebuffer);

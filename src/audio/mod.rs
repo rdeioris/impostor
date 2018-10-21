@@ -17,7 +17,7 @@ impl Beeper {
 
         Beeper {
             sink: rodio::Sink::new(&device),
-            wave: wave.take_duration(Duration::from_millis(100)),
+            wave: wave.take_duration(Duration::from_millis(125)),
         }
     }
 
