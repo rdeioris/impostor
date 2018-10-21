@@ -4,7 +4,7 @@ extern crate impostor;
 use clap::{App, Arg};
 
 use impostor::adapter::BusAdapter;
-use impostor::audio::Beeper;
+use impostor::audio::Piano;
 use impostor::memcontroller::MemoryControllerSmart;
 use impostor::mos6502::MOS6502;
 use impostor::ram::Ram;
@@ -32,6 +32,7 @@ struct AivFrameBuffer {
     current_col: u8,
     scroll_x: u8,
     scroll_y: u8,
+    input: u8,
 }
 
 impl AivFrameBuffer {
@@ -43,10 +44,12 @@ impl AivFrameBuffer {
             current_col: 0,
             scroll_x: 0,
             scroll_y: 0,
+            input: 0,
         }
     }
 
     fn vblank(&mut self) -> bool {
+        let mut input_state = 0;
         let mut exit = false;
         let x = self.scroll_x as usize * (self.screen.width / self.framebuffer.width);
         let y = self.scroll_y as usize * (self.screen.height / self.framebuffer.height);
@@ -56,8 +59,53 @@ impl AivFrameBuffer {
         self.screen.swap();
         self.screen.poll_events(|event| match event {
             WindowEvent::CloseRequested => exit = true,
+            WindowEvent::KeyboardInput { input, .. } => match input.virtual_keycode {
+                Some(VirtualKeyCode::Escape) => exit = true,
+                Some(VirtualKeyCode::Up) => {
+                    if input.state == ElementState::Pressed {
+                        input_state |= 0x01;
+                    }
+                }
+                Some(VirtualKeyCode::Down) => {
+                    if input.state == ElementState::Pressed {
+                        input_state |= 0x02;
+                    }
+                }
+                Some(VirtualKeyCode::Right) => {
+                    if input.state == ElementState::Pressed {
+                        input_state |= 0x04;
+                    }
+                }
+                Some(VirtualKeyCode::Left) => {
+                    if input.state == ElementState::Pressed {
+                        input_state |= 0x08;
+                    }
+                }
+                Some(VirtualKeyCode::Space) => {
+                    if input.state == ElementState::Pressed {
+                        input_state |= 0x10;
+                    }
+                }
+                Some(VirtualKeyCode::LShift) => {
+                    if input.state == ElementState::Pressed {
+                        input_state |= 0x20;
+                    }
+                }
+                Some(VirtualKeyCode::RShift) => {
+                    if input.state == ElementState::Pressed {
+                        input_state |= 0x40;
+                    }
+                }
+                Some(VirtualKeyCode::LAlt) => {
+                    if input.state == ElementState::Pressed {
+                        input_state |= 0x80;
+                    }
+                }
+                _ => (),
+            },
             _ => (),
         });
+        self.input = input_state;
         return exit;
     }
 }
@@ -108,6 +156,7 @@ impl AddressBusIO<u16, u8> for AivFrameBuffer {
             258 => value = self.scroll_x,
             259 => value = self.scroll_y,
             260 => value = self.current_col,
+            262 => value = self.input,
             _ => (),
         }
         return value;
@@ -139,6 +188,14 @@ fn main() {
                 .value_name("ticks")
                 .help("set ticks per second")
                 .default_value("1000000"),
+        ).arg(
+            Arg::with_name("piano-speed")
+                .required(false)
+                .long("piano-speed")
+                .takes_value(true)
+                .value_name("milliseconds")
+                .help("set duration of a piano note")
+                .default_value("125"),
         ).arg(Arg::with_name("romfile").index(1).required(true))
         .get_matches();
 
@@ -154,6 +211,11 @@ fn main() {
         Err(_) => panic!("invalid number format for hz"),
     };
 
+    let piano_speed: u64 = match to_number(matches.value_of("piano-speed").unwrap()) {
+        Ok(value) => value,
+        Err(_) => panic!("invalid number format for piano-speed"),
+    };
+
     let mut rom = Rom::new(fs::read(romfile).unwrap());
 
     let mut ram = Ram::new(4096);
@@ -162,7 +224,7 @@ fn main() {
 
     let mut term = BusAdapter::new(&mut term8);
 
-    let mut beeper = Beeper::new(880);
+    let mut piano = Piano::new(piano_speed);
 
     let screen = Screen::new("aivmachine", 512, 512);
 
@@ -173,7 +235,8 @@ fn main() {
     let mut memory_controller = MemoryControllerSmart::new();
     memory_controller.map(0x0000, 0x1fff, &mut ram);
     memory_controller.map(0x2000, 0x2003, &mut term);
-    memory_controller.map(0x2004, 0x2004, &mut beeper);
+
+    memory_controller.map(0x2004, 0x2004, &mut piano);
 
     let borrowed_aiv_framebuffer = Rc::clone(&aiv_framebuffer);
     memory_controller.map_shared(0x4000, 0x41ff, borrowed_aiv_framebuffer);
