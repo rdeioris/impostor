@@ -4,6 +4,12 @@ use std::io::{stderr, stdin, stdout, Stderr, Stdin, Stdout};
 use std::process;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+/*
+
+TODO: remove time management
+
+*/
+
 use AddressBusIO;
 
 pub struct UnixTerm {

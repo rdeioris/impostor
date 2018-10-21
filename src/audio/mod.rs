@@ -1,5 +1,5 @@
-use {Address, AddressBusIO, Data};
 use std::time::Duration;
+use {Address, AddressBusIO, Data};
 
 extern crate rodio;
 

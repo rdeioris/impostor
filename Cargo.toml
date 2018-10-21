@@ -11,6 +11,7 @@ num-traits = ">=0.2.5"
 glutin = ">=0.18"
 gl = ">=0.10.0"
 rand = ">=0.5.5"
+clap = ">=2.32.0"
 
 [profile.dev]
 overflow-checks = false

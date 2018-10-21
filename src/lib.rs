@@ -5,7 +5,10 @@ use num_traits::{NumAssign, PrimInt};
 
 use std::fmt::{Display, LowerHex, UpperHex};
 
-pub trait Address: PrimInt + NumAssign + Display + LowerHex + UpperHex + Sync + Send + 'static {}
+pub trait Address:
+    PrimInt + NumAssign + Display + LowerHex + UpperHex + Sync + Send + 'static
+{
+}
 
 pub trait Data: Address {}
 
@@ -23,7 +26,7 @@ pub trait Clock {
     fn step(&mut self);
 }
 
-pub trait Interrupt<T: Address>: Sync + Send {
+pub trait Interrupt<T: Address> {
     fn raise(&mut self, _line: T);
 }
 
@@ -38,6 +41,7 @@ pub mod ram;
 pub mod rom;
 pub mod timer;
 pub mod unixterm;
+pub mod utils;
 
 #[cfg(test)]
 mod tests {

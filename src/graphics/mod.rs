@@ -6,6 +6,7 @@ use std::mem;
 use graphics::glutin::GlContext;
 
 pub use graphics::glutin::{ElementState, VirtualKeyCode, WindowEvent};
+pub mod vga_mode13h_palette;
 
 pub struct Screen {
     pub width: usize,
@@ -117,8 +118,8 @@ impl Framebuffer {
                 gl::TEXTURE_2D,
                 0,
                 gl::RGB as i32,
-                64,
-                32,
+                self.width as i32,
+                self.height as i32,
                 0,
                 gl::RGB,
                 gl::UNSIGNED_BYTE,
@@ -127,13 +128,13 @@ impl Framebuffer {
             gl::BindFramebuffer(gl::READ_FRAMEBUFFER, self.framebuffer);
             gl::BlitFramebuffer(
                 0,
-                0,
+		0,
                 self.width as i32,
                 self.height as i32,
-                x as i32,
-                (y + height) as i32,
-                (x + width) as i32,
-                y as i32,
+                -(x as i32),
+                (height - y) as i32,
+                (width - x) as i32,
+                -(y as i32),
                 gl::COLOR_BUFFER_BIT,
                 gl::NEAREST,
             );

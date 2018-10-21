@@ -128,7 +128,12 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
         opcode!(cpu, bcc, 0x90, relative);
         opcode!(cpu, bcs, 0xb0, relative);
 
-        opcode!(cpu, cmp, 0xc9, immediate, 0xc5, zeropage, 0xd5, zeropage_x, 0xcd, absolute, 0xdd, absolute_x, 0xd9, absolute_y, 0xc1, indirect_x, 0xd1, indirect_y);
+        opcode!(cpu, brk, 0x00, implied);
+
+        opcode!(
+            cpu, cmp, 0xc9, immediate, 0xc5, zeropage, 0xd5, zeropage_x, 0xcd, absolute, 0xdd,
+            absolute_x, 0xd9, absolute_y, 0xc1, indirect_x, 0xd1, indirect_y
+        );
         opcode!(cpu, cpx, 0xe0, immediate, 0xe4, zeropage, 0xec, absolute);
         opcode!(cpu, cpy, 0xc0, immediate, 0xc4, zeropage, 0xcc, absolute);
 
@@ -172,6 +177,8 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
         opcode!(cpu, iny, 0xc8, implied);
 
         opcode!(cpu, rts, 0x60, implied);
+
+        opcode!(cpu, rti, 0x40, implied);
 
         opcode!(cpu, sbc, 0xe9, immediate, 0xe5, zeropage);
 
@@ -467,7 +474,7 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
     fn dec(&mut self) {
         let value = self.value - 1;
         let addr = self.addr;
-        self.write8(addr, value); 
+        self.write8(addr, value);
         self.set_flag(ZERO, value == 0);
         self.set_flag(SIGN, value >> 7 == 1);
     }
@@ -475,7 +482,7 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
     fn inc(&mut self) {
         let value = self.value + 1;
         let addr = self.addr;
-        self.write8(addr, value); 
+        self.write8(addr, value);
         self.set_flag(ZERO, value == 0);
         self.set_flag(SIGN, value >> 7 == 1);
     }
@@ -529,7 +536,7 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
 
     fn asl_a(&mut self) {
         let mut a = self.a;
-        self.set_flag(CARRY, (a &0x01) == 0x01);
+        self.set_flag(CARRY, (a & 0x01) == 0x01);
         a >>= 1;
         self.a = a;
         self.set_flag(ZERO, a == 0);
@@ -771,6 +778,37 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
         self.ticks += 2;
     }
 
+    fn brk(&mut self) {
+        self.interrupt(0xfffe);
+    }
+
+    fn interrupt(&mut self, address: u16) {
+        let sp: u16 = 0x100 + (self.sp as u16);
+        let pc = self.pc;
+        let pc_high = (pc >> 8) as u8;
+        let pc_low = (pc & 0x00ff) as u8;
+        self.write8(sp, pc_high);
+        self.write8(sp - 1, pc_low);
+        let status = self.status;
+        self.write8(sp - 2, status);
+        self.sp -= 3;
+
+        self.addr = self.read16(address);
+
+        self.pc = self.addr;
+        self.ticks += 5;
+    }
+
+    fn reset(&mut self, address: u16) {
+        self.status = ALWAYS_SET | INTERRUPT;
+        self.addr = self.read16(address);
+        self.pc = self.addr;
+        self.sp = 0xff;
+        self.a = 0;
+        self.x = 0;
+        self.y = 0;
+    }
+
     fn rts(&mut self) {
         self.sp += 1;
         let sp: u16 = 0x100 + (self.sp as u16);
@@ -778,6 +816,18 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
         let pc_high: u16 = self.read8(sp + 1) as u16;
         self.sp += 1;
         self.pc = (pc_high << 8 | pc_low) + 1;
+        self.ticks += 4;
+    }
+
+    fn rti(&mut self) {
+        self.sp += 1;
+        let sp: u16 = 0x100 + (self.sp as u16);
+        let status = self.read8(sp);
+        let pc_low: u16 = self.read8(sp + 1) as u16;
+        let pc_high: u16 = self.read8(sp + 2) as u16;
+        self.sp += 2;
+        self.pc = pc_high << 8 | pc_low;
+        self.status = status;
         self.ticks += 4;
     }
 
@@ -804,13 +854,20 @@ impl<T: AddressBusIO<u16, u8>> Clock for MOS6502<T> {
     }
 }
 
-impl<T: AddressBusIO<u16, u8> + Sync + Send> Interrupt<u16> for MOS6502<T> {
+impl<T: AddressBusIO<u16, u8>> Interrupt<u16> for MOS6502<T> {
+    // line 4: IRQ/BRK $FFFE/$FFFF
+    // line 6: NMI $FFFA/$FFFB
+    // line 40: RESET $FFFC/$FFFD
     fn raise(&mut self, line: u16) {
-        println!("raise {}", line);
         match line {
-            0x04 => if !self.get_flag(INTERRUPT) {
-                let jmp_addr = self.read16(0xfffe);
-                println!("BRK to {:04X}", jmp_addr)
+            4 => if !self.get_flag(INTERRUPT) {
+                self.interrupt(0xfffe)
+            },
+            6 => {
+                self.interrupt(0xfffa)
+            },
+            40 => if !self.get_flag(INTERRUPT) {
+                self.reset(0xfffc)
             },
             _ => println!("raised interrupt on line {}", line),
         }

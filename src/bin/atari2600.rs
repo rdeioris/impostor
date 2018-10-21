@@ -11,12 +11,11 @@ use impostor::AddressBusIO;
 
 use impostor::Clock;
 
-struct TIA {
-}
+struct TIA {}
 
 impl TIA {
     fn new() -> TIA {
-        TIA{}
+        TIA {}
     }
 }
 
@@ -26,17 +25,15 @@ impl AddressBusIO<u16, u8> for TIA {
     }
 }
 
-struct RIOT {
-}
+struct RIOT {}
 
 impl RIOT {
     fn new() -> RIOT {
-        RIOT{}
+        RIOT {}
     }
 }
 
-impl AddressBusIO<u16, u8> for RIOT {
-}
+impl AddressBusIO<u16, u8> for RIOT {}
 
 fn main() {
     let args: Vec<String> = env::args().collect();

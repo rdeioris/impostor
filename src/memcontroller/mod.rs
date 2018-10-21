@@ -4,21 +4,21 @@ use std::sync::{Arc, Mutex};
 
 use {Address, AddressBusIO, Data};
 
-struct AddressMapping<'a, T: Address+'a, U: Data+'a> {
+struct AddressMapping<'a, T: Address + 'a, U: Data + 'a> {
     start: T,
     end: T,
     connection: &'a mut AddressBusIO<T, U>,
 }
 
-struct MirrorMapping<T:Address> {
+struct MirrorMapping<T: Address> {
     start: T,
     end: T,
     mirror: T,
 }
 
-pub struct MemoryController<'a, T: Address+'a, U: Data+'a> {
+pub struct MemoryController<'a, T: Address + 'a, U: Data + 'a> {
     mappings: Vec<AddressMapping<'a, T, U>>,
-    mirrors: Vec<MirrorMapping<T>>, 
+    mirrors: Vec<MirrorMapping<T>>,
     pub panic_on_no_map: bool,
 }
 
@@ -40,11 +40,7 @@ impl<'a, T: Address, U: Data> MemoryController<'a, T, U> {
     }
 
     pub fn mirror(&mut self, start: T, end: T, mirror: T) {
-        self.mirrors.push(MirrorMapping{
-            start,
-            end,
-            mirror,
-        });
+        self.mirrors.push(MirrorMapping { start, end, mirror });
     }
 }
 
@@ -80,7 +76,9 @@ impl<'a, T: Address, U: Data> AddressBusIO<T, U> for MemoryController<'a, T, U> 
         }
         for mapping in &mut self.mappings {
             if cleaned_address >= mapping.start && cleaned_address <= mapping.end {
-                mapping.connection.write(cleaned_address - mapping.start, value);
+                mapping
+                    .connection
+                    .write(cleaned_address - mapping.start, value);
                 return;
             }
         }
@@ -240,6 +238,72 @@ impl<T: Address, U: Data> AddressBusIO<T, U> for MemoryControllerThreadSafe<T, U
                     .connection
                     .lock()
                     .unwrap()
+                    .write(address - mapping.start, value);
+                return;
+            }
+        }
+    }
+}
+
+pub struct MemoryControllerSmart<'a, T: Address + 'a, U: Data + 'a> {
+    mappings: Vec<AddressMapping<'a, T, U>>,
+    shared_mappings: Vec<AddressMappingShared<T, U>>,
+}
+
+impl<'a, T: Address, U: Data> MemoryControllerSmart<'a, T, U> {
+    pub fn new() -> MemoryControllerSmart<'a, T, U> {
+        MemoryControllerSmart {
+            mappings: Vec::new(),
+            shared_mappings: Vec::new(),
+        }
+    }
+    pub fn map(&mut self, start: T, end: T, connection: &'a mut AddressBusIO<T, U>) {
+        self.mappings.push(AddressMapping {
+            start: start,
+            end: end,
+            connection: connection,
+        });
+    }
+
+    pub fn map_shared(&mut self, start: T, end: T, connection: Rc<RefCell<AddressBusIO<T, U>>>) {
+        self.shared_mappings.push(AddressMappingShared {
+            start: start,
+            end: end,
+            connection: connection,
+        });
+    }
+}
+
+impl<'a, T: Address, U: Data> AddressBusIO<T, U> for MemoryControllerSmart<'a, T, U> {
+    fn read(&mut self, address: T) -> U {
+        for mapping in &mut self.mappings {
+            if address >= mapping.start && address <= mapping.end {
+                return mapping.connection.read(address - mapping.start);
+            }
+        }
+        for mapping in &mut self.shared_mappings {
+            if address >= mapping.start && address <= mapping.end {
+                return mapping
+                    .connection
+                    .borrow_mut()
+                    .read(address - mapping.start);
+            }
+        }
+        U::zero()
+    }
+
+    fn write(&mut self, address: T, value: U) {
+        for mapping in &mut self.mappings {
+            if address >= mapping.start && address <= mapping.end {
+                mapping.connection.write(address - mapping.start, value);
+                return;
+            }
+        }
+        for mapping in &mut self.shared_mappings {
+            if address >= mapping.start && address <= mapping.end {
+                mapping
+                    .connection
+                    .borrow_mut()
                     .write(address - mapping.start, value);
                 return;
             }
