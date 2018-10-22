@@ -8,6 +8,7 @@ use impostor::audio::Piano;
 use impostor::memcontroller::MemoryControllerSmart;
 use impostor::mos6502::MOS6502;
 use impostor::ram::Ram;
+use impostor::random::Random;
 use impostor::rom::Rom;
 use impostor::unixterm::UnixTerm;
 
@@ -340,6 +341,8 @@ fn main() {
 
     let mut piano = Piano::new(piano_speed);
 
+    let mut random = Random::new();
+
     let screen = Screen::new("aivmachine", 512, 512);
 
     let framebuffer = Framebuffer::new(256, 256);
@@ -351,6 +354,8 @@ fn main() {
     memory_controller.map(0x2000, 0x2003, &mut term);
 
     memory_controller.map(0x2004, 0x2004, &mut piano);
+
+    memory_controller.map(0x2005, 0x2005, &mut random);
 
     let borrowed_aiv_framebuffer = Rc::clone(&aiv_framebuffer);
     memory_controller.map_shared(0x4000, 0x7fff, borrowed_aiv_framebuffer);

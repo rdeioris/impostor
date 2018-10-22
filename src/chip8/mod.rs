@@ -1,5 +1,5 @@
+use rand;
 use {AddressBusIO, Clock};
-extern crate rand;
 
 pub struct Chip8<T: AddressBusIO<u16, u8>> {
     bus: T,

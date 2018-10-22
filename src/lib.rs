@@ -1,4 +1,5 @@
 extern crate num_traits;
+extern crate rand;
 
 pub use num_traits::AsPrimitive as As;
 use num_traits::{NumAssign, PrimInt};
@@ -38,6 +39,7 @@ pub mod input;
 pub mod memcontroller;
 pub mod mos6502;
 pub mod ram;
+pub mod random;
 pub mod rom;
 pub mod timer;
 pub mod unixterm;
