@@ -109,6 +109,11 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
 
         opcode!(cpu, asl, 0x06, zeropage, 0x16, zeropage_x, 0x0e, absolute, 0x1e, absolute_x);
 
+        opcode!(
+            cpu, eor, 0x49, immediate, 0x45, zeropage, 0x55, zeropage_x, 0x4d, absolute, 0x5d,
+            absolute_x, 0x59, absolute_y, 0x41, indirect_x, 0x51, indirect_y
+        );
+
         opcode!(cpu, lsr, 0x46, zeropage, 0x56, zeropage_x, 0x4e, absolute, 0x5e, absolute_x);
 
         opcode!(
@@ -579,6 +584,13 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
         self.set_flag(SIGN, a >> 7 == 1);
     }
 
+    fn eor(&mut self) {
+        self.a ^= self.value;
+        let a = self.a;
+        self.set_flag(ZERO, a == 0);
+        self.set_flag(SIGN, a >> 7 == 1);
+    }
+
     fn sbc(&mut self) {
         // first check for carry
         let carry = if self.get_flag(CARRY) { 0 } else { 1 };
@@ -861,7 +873,11 @@ impl<T: AddressBusIO<u16, u8>> Interrupt<u16> for MOS6502<T> {
     fn raise(&mut self, line: u16) {
         match line {
             4 => if !self.get_flag(INTERRUPT) {
-                self.interrupt(0xfffe)
+                if !self.get_flag(BRK) {
+                    self.interrupt(0xfffe);
+                    // set it later so the status can be restored from the stack
+                    self.set_flag(BRK, true);
+                }
             },
             6 => self.interrupt(0xfffa),
             40 => if !self.get_flag(INTERRUPT) {

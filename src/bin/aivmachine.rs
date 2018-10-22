@@ -25,6 +25,26 @@ use std::cell::RefCell;
 use std::fs;
 use std::rc::Rc;
 
+struct Sprite {
+    pixels: [u8; 64],
+    x: u8,
+    y: u8,
+    flags: u8,
+    framebuffer: Framebuffer,
+}
+
+impl Sprite {
+    fn new() -> Sprite {
+        Sprite {
+            pixels: [0; 64],
+            x: 0,
+            y: 0,
+            flags: 0,
+            framebuffer: Framebuffer::new(8, 8),
+        }
+    }
+}
+
 struct AivFrameBuffer {
     framebuffer: Framebuffer,
     screen: Screen,
@@ -33,6 +53,7 @@ struct AivFrameBuffer {
     scroll_x: u8,
     scroll_y: u8,
     input: u8,
+    sprites: [Sprite; 32],
 }
 
 impl AivFrameBuffer {
@@ -45,17 +66,81 @@ impl AivFrameBuffer {
             scroll_x: 0,
             scroll_y: 0,
             input: 0,
+            sprites: [
+                Sprite::new(),
+                Sprite::new(),
+                Sprite::new(),
+                Sprite::new(),
+                Sprite::new(),
+                Sprite::new(),
+                Sprite::new(),
+                Sprite::new(),
+                Sprite::new(),
+                Sprite::new(),
+                Sprite::new(),
+                Sprite::new(),
+                Sprite::new(),
+                Sprite::new(),
+                Sprite::new(),
+                Sprite::new(),
+                Sprite::new(),
+                Sprite::new(),
+                Sprite::new(),
+                Sprite::new(),
+                Sprite::new(),
+                Sprite::new(),
+                Sprite::new(),
+                Sprite::new(),
+                Sprite::new(),
+                Sprite::new(),
+                Sprite::new(),
+                Sprite::new(),
+                Sprite::new(),
+                Sprite::new(),
+                Sprite::new(),
+                Sprite::new(),
+            ],
         }
     }
 
     fn vblank(&mut self) -> bool {
         let mut input_state = 0;
         let mut exit = false;
-        let x = self.scroll_x as usize * (self.screen.width / self.framebuffer.width);
-        let y = self.scroll_y as usize * (self.screen.height / self.framebuffer.height);
+        let delta = self.screen.width / self.framebuffer.width;
+        let x = self.scroll_x as usize * delta;
+        let y = self.scroll_y as usize * delta;
         self.screen.clear();
         self.framebuffer
-            .blit(x, y, self.screen.width, self.screen.height);
+            .blit(&self.screen, x, y, self.screen.width, self.screen.height);
+        // draw sprites
+        for i in 0..32 {
+            let sprite = &mut self.sprites[i];
+            if sprite.flags & 0x01 != 1 {
+                continue;
+            }
+            for y in 0..8 {
+                for x in 0..8 {
+                    let sprite_x = if sprite.flags & 0x02 != 0 { 7 - x } else { x };
+                    let sprite_y = if sprite.flags & 0x04 != 0 { 7 - y } else { y };
+                    let color_address = sprite_y as usize * 8 + sprite_x as usize;
+                    let color = sprite.pixels[color_address];
+                    let pixel_address = (y * 8 * 3) + (x * 3);
+                    let final_color = MODE13H_PALETTE[color as usize];
+                    let pixels = &mut sprite.framebuffer.pixels;
+                    pixels[pixel_address] = (final_color >> 16) as u8;
+                    pixels[pixel_address + 1] = ((final_color >> 8) & 0xff) as u8;
+                    pixels[pixel_address + 2] = (final_color & 0xff) as u8;
+                }
+            }
+            let zoom = ((sprite.flags >> 4) + 1) as usize;
+            sprite.framebuffer.blit(
+                &self.screen,
+                sprite.x as usize * delta,
+                sprite.y as usize * delta,
+                8 * delta * zoom,
+                8 * delta * zoom,
+            );
+        }
         self.screen.swap();
         self.screen.poll_events(|event| match event {
             WindowEvent::CloseRequested => exit = true,
@@ -121,6 +206,22 @@ impl AddressBusIO<u16, u8> for AivFrameBuffer {
             self.framebuffer.pixels[pixel_address + 2] = (color & 0xff) as u8;
             return;
         }
+        if address >= 0x200 && address < 0x4000 {
+            let sprite_index = (address / 256) - 2;
+            let sprite_base = address - (sprite_index as u16 + 2) * 256;
+            let sprite = &mut self.sprites[sprite_index as usize];
+            if sprite_base < 64 {
+                sprite.pixels[sprite_base as usize] = value;
+                return;
+            }
+            match sprite_base {
+                64 => sprite.x = value,
+                65 => sprite.y = value,
+                66 => sprite.flags = value,
+                _ => (),
+            }
+            return;
+        }
         match address {
             256 => self.current_row = value,
             257 => {
@@ -151,6 +252,19 @@ impl AddressBusIO<u16, u8> for AivFrameBuffer {
 
     fn read(&mut self, address: u16) -> u8 {
         let mut value = 0;
+        if address >= 0x200 && address < 0x4000 {
+            let sprite_index = (address / 256) - 2;
+            let sprite_base = address - (sprite_index as u16 + 2) * 256;
+            let sprite = &self.sprites[sprite_index as usize];
+            match sprite_base {
+                64 => value = sprite.x,
+                65 => value = sprite.y,
+                66 => value = sprite.flags,
+                _ => (),
+            }
+            return value;
+        }
+
         match address {
             256 => value = self.current_row,
             258 => value = self.scroll_x,
@@ -239,7 +353,7 @@ fn main() {
     memory_controller.map(0x2004, 0x2004, &mut piano);
 
     let borrowed_aiv_framebuffer = Rc::clone(&aiv_framebuffer);
-    memory_controller.map_shared(0x4000, 0x41ff, borrowed_aiv_framebuffer);
+    memory_controller.map_shared(0x4000, 0x7fff, borrowed_aiv_framebuffer);
 
     memory_controller.map(0xc000, 0xffff, &mut rom);
 

@@ -116,7 +116,7 @@ fn main() {
                     framebuffer.pixels[pixels_offset + 2] = framebuffer.pixels[pixels_offset];
                 }
             }
-            framebuffer.blit(0, 0, screen.width, screen.height);
+            framebuffer.blit(&screen, 0, 0, screen.width, screen.height);
             screen.swap();
             chip8.redraw = false;
         }

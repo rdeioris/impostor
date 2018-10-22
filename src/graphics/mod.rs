@@ -111,7 +111,7 @@ impl Framebuffer {
         }
     }
 
-    pub fn blit(&self, x: usize, y: usize, width: usize, height: usize) {
+    pub fn blit(&self, screen: &Screen, x: usize, y: usize, width: usize, height: usize) {
         unsafe {
             gl::BindTexture(gl::TEXTURE_2D, self.texture);
             gl::TexImage2D(
@@ -131,10 +131,10 @@ impl Framebuffer {
                 0,
                 self.width as i32,
                 self.height as i32,
-                -(x as i32),
-                (height - y) as i32,
-                (width - x) as i32,
-                -(y as i32),
+                x as i32,
+                (screen.height - y) as i32,
+                (x + width) as i32,
+                (screen.height - y - height) as i32,
                 gl::COLOR_BUFFER_BIT,
                 gl::NEAREST,
             );
