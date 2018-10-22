@@ -288,6 +288,10 @@ fn main() {
                 .long("debug")
                 .help("report CPU state after each opcode"),
         ).arg(
+            Arg::with_name("no-vblank")
+                .long("no-vblank")
+                .help("disable NMI interrupt on vblank"),
+        ).arg(
             Arg::with_name("pc")
                 .required(false)
                 .long("pc")
@@ -366,6 +370,8 @@ fn main() {
     cpu.pc = pc;
     cpu.debug = matches.is_present("debug");
 
+    let block_nmi = matches.is_present("no-vblank");
+
     let mut last_ticks: u64 = 0;
 
     let ticks_per_frame = hz / 60;
@@ -383,6 +389,8 @@ fn main() {
         if aiv_framebuffer.borrow_mut().vblank() {
             break;
         }
-        cpu.raise(6);
+        if !block_nmi {
+            cpu.raise(6);
+        }
     }
 }

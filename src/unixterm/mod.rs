@@ -1,34 +1,58 @@
 use std::io::Read;
 use std::io::Write;
-use std::io::{stderr, stdin, stdout, Stderr, Stdin, Stdout};
+use std::io::{stderr, stdin, stdout, Stderr, Stdout};
 use std::process;
+use std::sync::mpsc::{channel, Receiver, Sender};
+use std::thread;
 
 use AddressBusIO;
 
 pub struct UnixTerm {
-    stdin: Stdin,
     stdout: Stdout,
     stderr: Stderr,
 
     last_stdout: u8,
     last_stderr: u8,
+
+    channel: (Sender<u8>, Receiver<u8>),
 }
 
 impl UnixTerm {
     pub fn new() -> UnixTerm {
-        UnixTerm {
-            stdin: stdin(),
+        let term = UnixTerm {
             stdout: stdout(),
             stderr: stderr(),
             last_stdout: 0,
             last_stderr: 0,
-        }
+            channel: channel(),
+        };
+
+        let sender = term.channel.0.clone();
+
+        thread::spawn(move || {
+            let mut stdin = stdin();
+            loop {
+                let mut buffer = [0; 1];
+                match stdin.read(&mut buffer) {
+                    Ok(_) => match sender.send(buffer[0]) {
+                        _ => (), // swallow errors
+                    },
+                    Err(_) => panic!("stdin error"),
+                }
+            }
+        });
+
+        return term;
     }
 }
 
 impl AddressBusIO<u8, u8> for UnixTerm {
     fn read(&mut self, address: u8) -> u8 {
         match address {
+            0x00 => match self.channel.1.try_recv() {
+                Ok(value) => value,
+                Err(_) => 0,
+            },
             0x01 => self.last_stdout,
             0x02 => self.last_stderr,
             _ => 0,
