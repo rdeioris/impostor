@@ -202,6 +202,18 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
         opcode!(cpu, php, 0x08, implied);
         opcode!(cpu, plp, 0x28, implied);
 
+        opcode!(cpu, rol_a, 0x2a, accumulator);
+
+        opcode!(
+            cpu, rol, 0x26, zeropage, 0x36, zeropage_x, 0x2e, absolute, 0x3e, absolute_x
+        );
+
+        opcode!(cpu, ror_a, 0x6a, accumulator);
+
+        opcode!(
+            cpu, ror, 0x66, zeropage, 0x76, zeropage_x, 0x6e, absolute, 0x7e, absolute_x
+        );
+
         return cpu;
     }
 
@@ -548,6 +560,28 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
         self.set_flag(SIGN, a >> 7 == 1);
     }
 
+    fn rol_a(&mut self) {
+        let mut a = self.a;
+	let carry = self.get_flag(CARRY);
+        self.set_flag(CARRY, (a >> 7) == 0x01);
+        a <<= 1;
+	a |= if carry { 1 } else { 0 };
+        self.a = a;
+        self.set_flag(ZERO, a == 0);
+        self.set_flag(SIGN, a >> 7 == 1);
+    }
+
+    fn ror_a(&mut self) {
+        let mut a = self.a;
+	let carry = self.get_flag(CARRY);
+        self.set_flag(CARRY, (a & 0x01) == 0x01);
+        a >>= 1;
+	a |= if carry { 0x80 } else { 0 };
+        self.a = a;
+        self.set_flag(ZERO, a == 0);
+        self.set_flag(SIGN, a >> 7 == 1);
+    }
+
     fn lsr_a(&mut self) {
         let mut a = self.a;
         self.set_flag(CARRY, (a >> 7) == 0x01);
@@ -555,6 +589,30 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
         self.a = a;
         self.set_flag(ZERO, a == 0);
         self.set_flag(SIGN, a >> 7 == 1);
+    }
+
+    fn rol(&mut self) {
+        let mut value = self.value;
+	let carry = self.get_flag(CARRY);
+        self.set_flag(CARRY, (value >> 7) == 0x01);
+        value <<= 1;
+	value |= if carry { 1 } else { 0 };
+	let addr = self.addr;
+        self.write8(addr, value);
+        self.set_flag(ZERO, value == 0);
+        self.set_flag(SIGN, value >> 7 == 1);
+    }
+
+    fn ror(&mut self) {
+        let mut value = self.value;
+	let carry = self.get_flag(CARRY);
+        self.set_flag(CARRY, (value & 0x01) == 0x01);
+        value >>= 1;
+	value |= if carry { 0x80 } else { 0 };
+	let addr = self.addr;
+        self.write8(addr, value);
+        self.set_flag(ZERO, value == 0);
+        self.set_flag(SIGN, value >> 7 == 1);
     }
 
     fn asl(&mut self) {
