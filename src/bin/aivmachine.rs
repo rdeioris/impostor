@@ -389,7 +389,8 @@ fn main() {
         if aiv_framebuffer.borrow_mut().vblank() {
             break;
         }
-        if !block_nmi {
+        // avoid NMI if the related vector is not in the rom
+        if !block_nmi && cpu.read(0xfffb) >= 0xc0 {
             cpu.raise(6);
         }
     }

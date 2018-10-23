@@ -204,15 +204,11 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
 
         opcode!(cpu, rol_a, 0x2a, accumulator);
 
-        opcode!(
-            cpu, rol, 0x26, zeropage, 0x36, zeropage_x, 0x2e, absolute, 0x3e, absolute_x
-        );
+        opcode!(cpu, rol, 0x26, zeropage, 0x36, zeropage_x, 0x2e, absolute, 0x3e, absolute_x);
 
         opcode!(cpu, ror_a, 0x6a, accumulator);
 
-        opcode!(
-            cpu, ror, 0x66, zeropage, 0x76, zeropage_x, 0x6e, absolute, 0x7e, absolute_x
-        );
+        opcode!(cpu, ror, 0x66, zeropage, 0x76, zeropage_x, 0x6e, absolute, 0x7e, absolute_x);
 
         return cpu;
     }
@@ -562,10 +558,10 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
 
     fn rol_a(&mut self) {
         let mut a = self.a;
-	let carry = self.get_flag(CARRY);
+        let carry = self.get_flag(CARRY);
         self.set_flag(CARRY, (a >> 7) == 0x01);
         a <<= 1;
-	a |= if carry { 1 } else { 0 };
+        a |= if carry { 1 } else { 0 };
         self.a = a;
         self.set_flag(ZERO, a == 0);
         self.set_flag(SIGN, a >> 7 == 1);
@@ -573,10 +569,10 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
 
     fn ror_a(&mut self) {
         let mut a = self.a;
-	let carry = self.get_flag(CARRY);
+        let carry = self.get_flag(CARRY);
         self.set_flag(CARRY, (a & 0x01) == 0x01);
         a >>= 1;
-	a |= if carry { 0x80 } else { 0 };
+        a |= if carry { 0x80 } else { 0 };
         self.a = a;
         self.set_flag(ZERO, a == 0);
         self.set_flag(SIGN, a >> 7 == 1);
@@ -593,11 +589,11 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
 
     fn rol(&mut self) {
         let mut value = self.value;
-	let carry = self.get_flag(CARRY);
+        let carry = self.get_flag(CARRY);
         self.set_flag(CARRY, (value >> 7) == 0x01);
         value <<= 1;
-	value |= if carry { 1 } else { 0 };
-	let addr = self.addr;
+        value |= if carry { 1 } else { 0 };
+        let addr = self.addr;
         self.write8(addr, value);
         self.set_flag(ZERO, value == 0);
         self.set_flag(SIGN, value >> 7 == 1);
@@ -605,11 +601,11 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
 
     fn ror(&mut self) {
         let mut value = self.value;
-	let carry = self.get_flag(CARRY);
+        let carry = self.get_flag(CARRY);
         self.set_flag(CARRY, (value & 0x01) == 0x01);
         value >>= 1;
-	value |= if carry { 0x80 } else { 0 };
-	let addr = self.addr;
+        value |= if carry { 0x80 } else { 0 };
+        let addr = self.addr;
         self.write8(addr, value);
         self.set_flag(ZERO, value == 0);
         self.set_flag(SIGN, value >> 7 == 1);
@@ -921,6 +917,23 @@ impl<T: AddressBusIO<u16, u8>> Clock for MOS6502<T> {
         (self.opcode.fetch)(self);
         // execute
         (self.opcode.fun)(self);
+        if self.debug {
+            let f_s = if self.get_flag(SIGN) { "S" } else { "-" };
+            let f_v = if self.get_flag(OVERFLOW) { "V" } else { "-" };
+            let f_z = if self.get_flag(ZERO) { "Z" } else { "-" };
+            let f_c = if self.get_flag(CARRY) { "C" } else { "-" };
+
+            self.debug_line = format!(
+                "{} [A=${:02X} X=${:02X} Y=${:02X} SP=${:02X} {}{}{}{}]",
+                self.debug_line, self.a, self.x, self.y, self.sp, f_s, f_v, f_z, f_c
+            );
+        }
+    }
+}
+
+impl<T: AddressBusIO<u16, u8>> AddressBusIO<u16, u8> for MOS6502<T> {
+    fn read(&mut self, address: u16) -> u8 {
+        return self.read8(address);
     }
 }
 
