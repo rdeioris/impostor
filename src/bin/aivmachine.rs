@@ -1,5 +1,6 @@
 extern crate clap;
 extern crate impostor;
+extern crate glutin;
 
 use clap::{App, Arg};
 
@@ -25,6 +26,9 @@ use impostor::Interrupt;
 use std::cell::RefCell;
 use std::fs;
 use std::rc::Rc;
+
+use glutin::GlContext;
+use glutin::dpi::*;
 
 struct Sprite {
     pixels: [u8; 64],
@@ -191,6 +195,13 @@ impl AivFrameBuffer {
             },
             _ => (),
         });
+
+        // Fix for macOS Mojave that has rendering issues
+        if cfg!(target_os = "macos")
+        {
+            self.screen.gl_window.resize(PhysicalSize::new(256.0, 256.0));
+        }
+
         self.input = input_state;
         return exit;
     }

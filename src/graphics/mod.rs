@@ -12,7 +12,7 @@ pub struct Screen {
     pub width: usize,
     pub height: usize,
     pub event_loop: glutin::EventsLoop,
-    gl_window: glutin::GlWindow,
+    pub gl_window: glutin::GlWindow,
 }
 
 impl Screen {
