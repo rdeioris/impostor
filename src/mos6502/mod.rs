@@ -185,7 +185,10 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
 
         opcode!(cpu, rti, 0x40, implied);
 
-        opcode!(cpu, sbc, 0xe9, immediate, 0xe5, zeropage);
+        opcode!(
+            cpu, sbc, 0xe9, immediate, 0xe5, zeropage, 0xf5, zeropage_x, 0xed, absolute, 0xfd,
+            absolute_x, 0xf9, absolute_y, 0xe1, indirect_x, 0xf1, indirect_y
+        );
 
         opcode!(
             cpu, sta, 0x85, zeropage, 0x95, zeropage_x, 0x8d, absolute, 0x9d, absolute_x, 0x99,
@@ -372,7 +375,12 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
         self.pc += 1;
         self.ticks += 2;
         if self.debug {
-            self.debug_line = format!("{} (${:04X}) (indirect addr: ${:04X})", self.get_opcode_name(), addr, self.addr);
+            self.debug_line = format!(
+                "{} (${:04X}) (indirect addr: ${:04X})",
+                self.get_opcode_name(),
+                addr,
+                self.addr
+            );
         }
     }
 
@@ -387,7 +395,12 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
         self.pc += 1;
         self.ticks += 3;
         if self.debug {
-            self.debug_line = format!("{} (${:02X},X) (indirect addr: ${:04X})", self.get_opcode_name(), original_offset, self.addr);
+            self.debug_line = format!(
+                "{} (${:02X},X) (indirect addr: ${:04X})",
+                self.get_opcode_name(),
+                original_offset,
+                self.addr
+            );
         }
     }
 
@@ -404,7 +417,12 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
             self.ticks += 1;
         }
         if self.debug {
-            self.debug_line = format!("{} (${:02X}),Y (indirect addr: ${:04X})", self.get_opcode_name(), offset, self.addr);
+            self.debug_line = format!(
+                "{} (${:02X}),Y (indirect addr: ${:04X})",
+                self.get_opcode_name(),
+                offset,
+                self.addr
+            );
         }
     }
 
@@ -926,7 +944,16 @@ impl<T: AddressBusIO<u16, u8>> Clock for MOS6502<T> {
 
             self.debug_line = format!(
                 "{} [A=${:02X} X=${:02X} Y=${:02X} SP=${:02X} |${:02X}| {}{}{}{}]",
-                self.debug_line, self.a, self.x, self.y, self.sp, self.current_opcode, f_s, f_v, f_z, f_c
+                self.debug_line,
+                self.a,
+                self.x,
+                self.y,
+                self.sp,
+                self.current_opcode,
+                f_s,
+                f_v,
+                f_z,
+                f_c
             );
         }
     }

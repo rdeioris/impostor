@@ -42,10 +42,11 @@ impl Screen {
             gl::ClearColor(0.0, 0.0, 0.0, 1.0);
         }
 
-	// Fix for macOS Mojave that has rendering issues
-        if cfg!(target_os = "macos")
-        {
-            screen.gl_window.resize(glutin::dpi::PhysicalSize::from_logical(logical_size, 1f64));
+        // Fix for macOS Mojave that has rendering issues
+        if cfg!(target_os = "macos") {
+            screen
+                .gl_window
+                .resize(glutin::dpi::PhysicalSize::from_logical(logical_size, 1f64));
         }
 
         return screen;
