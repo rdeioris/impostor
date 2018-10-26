@@ -366,27 +366,28 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
 
     fn indirect(&mut self) {
         let addr = self.read16_from_pc();
-        self.addr = addr;
         let indirect_addr = self.read16(addr) as u16;
+        self.addr = indirect_addr;
         self.value = self.read8(indirect_addr);
         self.pc += 1;
         self.ticks += 2;
         if self.debug {
-            self.debug_line = format!("{} (${:04X})", self.get_opcode_name(), self.addr);
+            self.debug_line = format!("{} (${:04X}) (indirect addr: ${:04X})", self.get_opcode_name(), addr, self.addr);
         }
     }
 
     fn indirect_x(&mut self) {
         let pc = self.pc;
         // leave it as u8 to allow overflowing
-        let offset = (self.read8(pc) + self.x) as u16;
+        let original_offset = self.read8(pc) as u16;
+        let offset = original_offset + 2;
         let indirect_addr = self.read16(offset);
         self.addr = indirect_addr;
         self.value = self.read8(indirect_addr);
         self.pc += 1;
         self.ticks += 3;
         if self.debug {
-            self.debug_line = format!("{} (${:02X},X)", self.get_opcode_name(), self.addr);
+            self.debug_line = format!("{} (${:02X},X) (indirect addr: ${:04X})", self.get_opcode_name(), original_offset, self.addr);
         }
     }
 
@@ -394,16 +395,16 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
         let pc = self.pc;
         // leave it as u8 to allow overflowing
         let offset = self.read8(pc) as u16;
-        let indirect_addr = self.read16(offset) + self.y as u16;
-        self.addr = indirect_addr;
+        let indirect_addr = self.read16(offset) + (self.y as u16);
         self.value = self.read8(indirect_addr);
+        self.addr = indirect_addr;
         self.pc += 1;
         self.ticks += 2;
         if indirect_addr >> 8 != 0 {
             self.ticks += 1;
         }
         if self.debug {
-            self.debug_line = format!("{} (${:02X}),Y", self.get_opcode_name(), self.addr);
+            self.debug_line = format!("{} (${:02X}),Y (indirect addr: ${:04X})", self.get_opcode_name(), offset, self.addr);
         }
     }
 
