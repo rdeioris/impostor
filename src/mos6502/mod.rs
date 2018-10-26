@@ -925,8 +925,8 @@ impl<T: AddressBusIO<u16, u8>> Clock for MOS6502<T> {
             let f_c = if self.get_flag(CARRY) { "C" } else { "-" };
 
             self.debug_line = format!(
-                "{} [A=${:02X} X=${:02X} Y=${:02X} SP=${:02X} {}{}{}{}]",
-                self.debug_line, self.a, self.x, self.y, self.sp, f_s, f_v, f_z, f_c
+                "{} [A=${:02X} X=${:02X} Y=${:02X} SP=${:02X} |${:02X}| {}{}{}{}]",
+                self.debug_line, self.a, self.x, self.y, self.sp, self.current_opcode, f_s, f_v, f_z, f_c
             );
         }
     }
