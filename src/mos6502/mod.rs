@@ -380,8 +380,8 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
         let pc = self.pc;
         // leave it as u8 to allow overflowing
         let offset = (self.read8(pc) + self.x) as u16;
-        self.addr = offset;
         let indirect_addr = self.read16(offset);
+        self.addr = indirect_addr;
         self.value = self.read8(indirect_addr);
         self.pc += 1;
         self.ticks += 3;
@@ -394,8 +394,8 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
         let pc = self.pc;
         // leave it as u8 to allow overflowing
         let offset = self.read8(pc) as u16;
-        self.addr = offset;
         let indirect_addr = self.read16(offset) + self.y as u16;
+        self.addr = indirect_addr;
         self.value = self.read8(indirect_addr);
         self.pc += 1;
         self.ticks += 2;

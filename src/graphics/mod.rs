@@ -12,7 +12,7 @@ pub struct Screen {
     pub width: usize,
     pub height: usize,
     pub event_loop: glutin::EventsLoop,
-    pub gl_window: glutin::GlWindow,
+    gl_window: glutin::GlWindow,
 }
 
 impl Screen {
@@ -40,6 +40,12 @@ impl Screen {
             screen.gl_window.make_current().unwrap();
             gl::load_with(|symbol| screen.gl_window.get_proc_address(symbol) as *const _);
             gl::ClearColor(0.0, 0.0, 0.0, 1.0);
+        }
+
+	// Fix for macOS Mojave that has rendering issues
+        if cfg!(target_os = "macos")
+        {
+            screen.gl_window.resize(glutin::dpi::PhysicalSize::from_logical(logical_size, 1f64));
         }
 
         return screen;

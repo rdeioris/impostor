@@ -64,10 +64,12 @@ impl AddressBusIO<u8, u8> for UnixTerm {
         match address {
             0x01 => {
                 self.stdout.write(&buffer).unwrap();
+                self.stdout.flush().unwrap();
                 self.last_stdout = value;
             }
             0x02 => {
                 self.stderr.write(&buffer).unwrap();
+                self.stderr.flush().unwrap();
                 self.last_stderr = value;
             }
             0x03 => {
