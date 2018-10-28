@@ -21,6 +21,14 @@ pub trait AddressBusIO<T: Address, U: Data> {
         U::zero()
     }
     fn write(&mut self, _address: T, _value: U) {}
+
+    fn address_str(&self, address: T) -> String {
+        format!("${:X}", address)
+    }
+
+    fn data_str(&self, data: U) -> String {
+        format!("${:X}", data)
+    }
 }
 
 pub trait Clock {

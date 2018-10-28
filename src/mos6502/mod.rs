@@ -963,6 +963,18 @@ impl<T: AddressBusIO<u16, u8>> AddressBusIO<u16, u8> for MOS6502<T> {
     fn read(&mut self, address: u16) -> u8 {
         return self.read8(address);
     }
+
+    fn write(&mut self, address: u16, data: u8) {
+        self.write8(address, data)
+    }
+
+    fn address_str(&self, address: u16) -> String {
+        format!("${:04X}", address)
+    }
+
+    fn data_str(&self, data: u8) -> String {
+        format!("${:02X}", data)
+    }
 }
 
 impl<T: AddressBusIO<u16, u8>> Interrupt<u16> for MOS6502<T> {

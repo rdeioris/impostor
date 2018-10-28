@@ -28,19 +28,20 @@ pub fn debugger<
                                     Ok(qt) => {
                                         let mut counter = T::zero();
                                         let mut next_line = 0;
+					print!("{}: ", bus.address_str(address + counter));
                                         while counter < qt {
-                                            print!("${:02X} ", bus.read(address + counter));
+                                            let data = bus.read(address + counter);
+                                            print!("{} ", bus.data_str(data));
                                             if next_line == 15 {
                                                 println!("");
+						print!("{}: ", bus.address_str(address + counter + T::one()));
                                                 next_line = 0;
                                             } else {
                                                 next_line += 1;
                                             }
                                             counter += T::one();
                                         }
-                                        if next_line != 0 {
-                                            println!("");
-                                        }
+                                        println!("");
                                     }
                                     Err(err) => println!("Error: {}", err),
                                 },
@@ -49,6 +50,21 @@ pub fn debugger<
                             Err(err) => println!("Error: {}", err),
                         },
                         _ => println!("syntax: p <address>"),
+                    },
+                    Some("w") => match iter.next() {
+                        Some(value) => match to_number::<T>(value) {
+                            Ok(address) => match iter.next() {
+                                Some(argument) => match to_number::<U>(argument) {
+                                    Ok(data) => {
+                                        bus.write(address, data);
+                                    },
+                                    Err(err) => println!("Error: {}", err),
+                                },
+                                _ => println!("syntax: w <address> <value>"),
+                            },
+                            Err(err) => println!("Error: {}", err),
+                        }
+                        _ => println!("syntax: w <address> <value>"),
                     },
                     Some("q") => return false,
                     Some("r") => return false,
