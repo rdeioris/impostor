@@ -34,6 +34,7 @@ pub trait Interrupt<T: Address> {
 pub mod adapter;
 pub mod audio;
 pub mod chip8;
+pub mod debugger;
 pub mod graphics;
 pub mod input;
 pub mod memcontroller;

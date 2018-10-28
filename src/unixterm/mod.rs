@@ -14,30 +14,39 @@ pub struct UnixTerm {
     last_stdout: u8,
     last_stderr: u8,
 
-    channel: (Sender<u8>, Receiver<u8>),
+    channel_data: (Sender<u8>, Receiver<u8>),
+    channel_command: Sender<u8>,
 }
 
 impl UnixTerm {
     pub fn new() -> UnixTerm {
+        let channel_command = channel();
+
         let term = UnixTerm {
             stdout: stdout(),
             stderr: stderr(),
             last_stdout: 0,
             last_stderr: 0,
-            channel: channel(),
+            channel_data: channel(),
+            channel_command: channel_command.0.clone(),
         };
 
-        let sender = term.channel.0.clone();
+        let sender = term.channel_data.0.clone();
 
         thread::spawn(move || {
-            let mut stdin = stdin();
+            let stdin = stdin();
             loop {
-                let mut buffer = [0; 1];
-                match stdin.read(&mut buffer) {
-                    Ok(_) => match sender.send(buffer[0]) {
-                        _ => (), // swallow errors
-                    },
-                    Err(_) => panic!("stdin error"),
+                match channel_command.1.recv() {
+                    Ok(_) => {
+                        let mut buffer = [0; 1];
+                        match stdin.lock().read(&mut buffer) {
+                            Ok(_) => match sender.send(buffer[0]) {
+                                _ => (), // swallow errors;
+                            },
+                            Err(_) => panic!("stdin error"),
+                        }
+                    }
+                    Err(_) => panic!("stdin channel error"),
                 }
             }
         });
@@ -48,8 +57,10 @@ impl UnixTerm {
 
 impl AddressBusIO<u8, u8> for UnixTerm {
     fn read(&mut self, address: u8) -> u8 {
+        // wake up thread
+        self.channel_command.send(0).unwrap();
         match address {
-            0x00 => match self.channel.1.try_recv() {
+            0x00 => match self.channel_data.1.try_recv() {
                 Ok(value) => value,
                 Err(_) => 0,
             },

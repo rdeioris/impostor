@@ -22,6 +22,8 @@ use impostor::input::{ElementState, VirtualKeyCode};
 use impostor::AddressBusIO;
 use impostor::Interrupt;
 
+use impostor::debugger::debugger;
+
 use std::cell::RefCell;
 use std::fs;
 use std::rc::Rc;
@@ -326,10 +328,15 @@ fn main() {
         Err(_) => panic!("invalid address format for pc"),
     };
 
-    let hz: u32 = match to_number(matches.value_of("hz").unwrap()) {
+    let mut hz: u32 = match to_number(matches.value_of("hz").unwrap()) {
         Ok(value) => value,
         Err(_) => panic!("invalid number format for hz"),
     };
+
+    if hz < 60 {
+        println!("WARNING: forcing hz to minimal value: 60");
+        hz = 60;
+    }
 
     let piano_speed: u64 = match to_number(matches.value_of("piano-speed").unwrap()) {
         Ok(value) => value,
@@ -377,9 +384,14 @@ fn main() {
 
     let ticks_per_frame = hz / 60;
 
+    let mut in_debugger = true;
+
     loop {
         let mut ticks_counter = ticks_per_frame as i64;
         while ticks_counter > 0 {
+            if in_debugger {
+                in_debugger = debugger(format!("${0:4X}>> ", cpu.pc), &mut cpu);
+            }
             cpu.step();
             if cpu.debug {
                 println!("[{:04X}] {}", cpu.debug_pc, cpu.debug_line);
