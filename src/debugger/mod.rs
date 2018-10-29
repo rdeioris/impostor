@@ -28,13 +28,16 @@ pub fn debugger<
                                     Ok(qt) => {
                                         let mut counter = T::zero();
                                         let mut next_line = 0;
-					print!("{}: ", bus.address_str(address + counter));
+                                        print!("{}: ", bus.address_str(address + counter));
                                         while counter < qt {
                                             let data = bus.read(address + counter);
                                             print!("{} ", bus.data_str(data));
                                             if next_line == 15 {
                                                 println!("");
-						print!("{}: ", bus.address_str(address + counter + T::one()));
+                                                print!(
+                                                    "{}: ",
+                                                    bus.address_str(address + counter + T::one())
+                                                );
                                                 next_line = 0;
                                             } else {
                                                 next_line += 1;
@@ -57,13 +60,13 @@ pub fn debugger<
                                 Some(argument) => match to_number::<U>(argument) {
                                     Ok(data) => {
                                         bus.write(address, data);
-                                    },
+                                    }
                                     Err(err) => println!("Error: {}", err),
                                 },
                                 _ => println!("syntax: w <address> <value>"),
                             },
                             Err(err) => println!("Error: {}", err),
-                        }
+                        },
                         _ => println!("syntax: w <address> <value>"),
                     },
                     Some("q") => return false,

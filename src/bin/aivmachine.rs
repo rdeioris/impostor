@@ -180,8 +180,18 @@ impl AivFrameBuffer {
 
             for y in 0..(sprite_tile_size * scale) {
                 for x in 0..(sprite_tile_size * scale) {
-                    let tile_pixel_x = x / scale;
-                    let tile_pixel_y = y / scale;
+                    let flipped_x = if (sprite.flags >> 1) & 0x01 == 0 {
+                        x
+                    } else {
+                        ((sprite_tile_size * scale) - 1) - x
+                    };
+                    let flipped_y = if (sprite.flags >> 2) & 0x01 == 0 {
+                        y
+                    } else {
+                        ((sprite_tile_size * scale) - 1) - y
+                    };
+                    let tile_pixel_x = flipped_x / scale;
+                    let tile_pixel_y = flipped_y / scale;
                     let tile_chr_x = (sprite.tile as usize % (256 / sprite_tile_size))
                         * sprite_tile_size
                         + tile_pixel_x;
