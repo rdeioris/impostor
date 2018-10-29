@@ -28,22 +28,21 @@ use std::cell::RefCell;
 use std::fs;
 use std::rc::Rc;
 
+#[derive(Copy, Clone)]
 struct Sprite {
-    pixels: [u8; 64],
+    tile: u8,
     x: u8,
     y: u8,
     flags: u8,
-    framebuffer: Framebuffer,
 }
 
 impl Sprite {
     fn new() -> Sprite {
         Sprite {
-            pixels: [0; 64],
+            tile: 0,
             x: 0,
             y: 0,
             flags: 0,
-            framebuffer: Framebuffer::new(8, 8),
         }
     }
 }
@@ -51,100 +50,78 @@ impl Sprite {
 struct AivFrameBuffer {
     framebuffer: Framebuffer,
     screen: Screen,
+    background_color: u8,
     current_row: u8,
     current_col: u8,
     scroll_x: u8,
     scroll_y: u8,
     input: u8,
-    sprites: [Sprite; 32],
+    background: [u8; 64 * 64],
+    sprites: [Sprite; 64],
+    chr_ram: [u8; 256 * 256],
 }
 
 impl AivFrameBuffer {
     fn new(screen: Screen, framebuffer: Framebuffer) -> AivFrameBuffer {
+        let sprite = Sprite::new();
         AivFrameBuffer {
             screen,
             framebuffer,
+            background_color: 0,
             current_row: 0,
             current_col: 0,
             scroll_x: 0,
             scroll_y: 0,
             input: 0,
-            sprites: [
-                Sprite::new(),
-                Sprite::new(),
-                Sprite::new(),
-                Sprite::new(),
-                Sprite::new(),
-                Sprite::new(),
-                Sprite::new(),
-                Sprite::new(),
-                Sprite::new(),
-                Sprite::new(),
-                Sprite::new(),
-                Sprite::new(),
-                Sprite::new(),
-                Sprite::new(),
-                Sprite::new(),
-                Sprite::new(),
-                Sprite::new(),
-                Sprite::new(),
-                Sprite::new(),
-                Sprite::new(),
-                Sprite::new(),
-                Sprite::new(),
-                Sprite::new(),
-                Sprite::new(),
-                Sprite::new(),
-                Sprite::new(),
-                Sprite::new(),
-                Sprite::new(),
-                Sprite::new(),
-                Sprite::new(),
-                Sprite::new(),
-                Sprite::new(),
-            ],
+            background: [0; 64 * 64],
+            sprites: [sprite; 64],
+            chr_ram: [0; 256 * 256],
         }
     }
 
+    fn write_pixel(&mut self, x: u8, y: u8, color: u8) {
+        let pixels = &mut self.framebuffer.pixels;
+        let pixel_address = (y as usize * self.framebuffer.width * 3) + (x as usize * 3); 
+        let color_rgb = MODE13H_PALETTE[color as usize];
+        pixels[pixel_address] = (color_rgb >> 16) as u8;
+        pixels[pixel_address + 1] = ((color_rgb >> 8) & 0xff) as u8;
+        pixels[pixel_address + 2] = (color_rgb & 0xff) as u8;
+    }
+
     fn vblank(&mut self) -> bool {
-        let mut input_state = 0;
-        let mut exit = false;
-        let delta = self.screen.width / self.framebuffer.width;
-        let x = self.scroll_x as usize * delta;
-        let y = self.scroll_y as usize * delta;
         self.screen.clear();
-        self.framebuffer
-            .blit(&self.screen, x, y, self.screen.width, self.screen.height);
-        // draw sprites
-        for i in 0..32 {
-            let sprite = &mut self.sprites[i];
-            if sprite.flags & 0x01 != 1 {
-                continue;
-            }
-            for y in 0..8 {
-                for x in 0..8 {
-                    let sprite_x = if sprite.flags & 0x02 != 0 { 7 - x } else { x };
-                    let sprite_y = if sprite.flags & 0x04 != 0 { 7 - y } else { y };
-                    let color_address = sprite_y as usize * 8 + sprite_x as usize;
-                    let color = sprite.pixels[color_address];
-                    let pixel_address = (y * 8 * 3) + (x * 3);
-                    let final_color = MODE13H_PALETTE[color as usize];
-                    let pixels = &mut sprite.framebuffer.pixels;
-                    pixels[pixel_address] = (final_color >> 16) as u8;
-                    pixels[pixel_address + 1] = ((final_color >> 8) & 0xff) as u8;
-                    pixels[pixel_address + 2] = (final_color & 0xff) as u8;
+        for y in 0..=255 {
+            for x in 0..=255 {
+                // set background color
+                let background_color = self.background_color;
+                self.write_pixel(x, y, background_color);
+		// get background tile for the pixel
+                let absolute_x = x as usize + self.scroll_x as usize;
+                let absolute_y = y as usize + self.scroll_y as usize;
+                let tile_x = absolute_x / 8;
+                let tile_y = absolute_y / 8;
+                let tile = self.background[tile_y * 64 + tile_x];
+		// get pixel tile
+                let tile_pixel_x = absolute_x % 8;
+                let tile_pixel_y = absolute_y % 8;
+                let tile_chr_x = (tile as usize % 32) * 8 + tile_pixel_x;
+                let tile_chr_y = (tile as usize / 32) * 8 + tile_pixel_y;
+                let tile_address = tile_chr_y * 256 + tile_chr_x;
+                let tile_pixel_color = self.chr_ram[tile_address];
+                // write it in the framebuffer (if not 0)
+                if tile_pixel_color != 0 {
+                    self.write_pixel(x, y, tile_pixel_color);
                 }
+                // check each sprite
             }
-            let zoom = ((sprite.flags >> 4) + 1) as usize;
-            sprite.framebuffer.blit(
-                &self.screen,
-                sprite.x as usize * delta,
-                sprite.y as usize * delta,
-                8 * delta * zoom,
-                8 * delta * zoom,
-            );
         }
+        self.framebuffer
+            .blit(&self.screen, 0, 0, self.screen.width, self.screen.height);
         self.screen.swap();
+
+        let mut input_state = self.input;
+        let mut exit = false;
+
         self.screen.poll_events(|event| match event {
             WindowEvent::CloseRequested => exit = true,
             WindowEvent::KeyboardInput { input, .. } => match input.virtual_keycode {
@@ -152,41 +129,57 @@ impl AivFrameBuffer {
                 Some(VirtualKeyCode::Up) => {
                     if input.state == ElementState::Pressed {
                         input_state |= 0x01;
+                    } else {
+                        input_state &= !0x01;
                     }
                 }
                 Some(VirtualKeyCode::Down) => {
                     if input.state == ElementState::Pressed {
                         input_state |= 0x02;
+                    } else {
+                        input_state &= !0x02;
                     }
                 }
                 Some(VirtualKeyCode::Right) => {
                     if input.state == ElementState::Pressed {
                         input_state |= 0x04;
+                    } else {
+                        input_state &= !0x04;
                     }
                 }
                 Some(VirtualKeyCode::Left) => {
                     if input.state == ElementState::Pressed {
                         input_state |= 0x08;
+                    } else {
+                        input_state &= !0x08;
                     }
                 }
                 Some(VirtualKeyCode::Space) => {
                     if input.state == ElementState::Pressed {
                         input_state |= 0x10;
+                    } else {
+                        input_state &= !0x10;
                     }
                 }
                 Some(VirtualKeyCode::LShift) => {
                     if input.state == ElementState::Pressed {
                         input_state |= 0x20;
+                    } else {
+                        input_state &= !0x20;
                     }
                 }
                 Some(VirtualKeyCode::RShift) => {
                     if input.state == ElementState::Pressed {
                         input_state |= 0x40;
+                    } else {
+                        input_state &= !0x40;
                     }
                 }
                 Some(VirtualKeyCode::LAlt) => {
                     if input.state == ElementState::Pressed {
                         input_state |= 0x80;
+                    } else {
+                        input_state &= !0x80;
                     }
                 }
                 _ => (),
@@ -201,83 +194,68 @@ impl AivFrameBuffer {
 
 impl AddressBusIO<u16, u8> for AivFrameBuffer {
     fn write(&mut self, address: u16, value: u8) {
-        if address < 256 {
-            let pixel_address: usize =
-                (self.current_row as usize * self.framebuffer.width * 3) + (address as usize * 3);
-            let color = MODE13H_PALETTE[value as usize];
-            self.framebuffer.pixels[pixel_address] = (color >> 16) as u8;
-            self.framebuffer.pixels[pixel_address + 1] = ((color >> 8) & 0xff) as u8;
-            self.framebuffer.pixels[pixel_address + 2] = (color & 0xff) as u8;
+        // first 4k are for the background
+        if address < 0x1000 {
+            self.background[address as usize] = value;
             return;
         }
-        if address >= 0x200 && address < 0x4000 {
-            let sprite_index = (address / 256) - 2;
-            let sprite_base = address - (sprite_index as u16 + 2) * 256;
+        // a whole page is for sprite management (4 bytes for each sprite) 
+        // a total of 64 sprites is supported
+        if address <= 0x10ff {
+            let sprite_index = (address - 0x1000) / 4;
+            let sprite_item = (address - 0x1000) % 4;
             let sprite = &mut self.sprites[sprite_index as usize];
-            if sprite_base < 64 {
-                sprite.pixels[sprite_base as usize] = value;
-                return;
-            }
-            match sprite_base {
-                64 => sprite.x = value,
-                65 => sprite.y = value,
-                66 => sprite.flags = value,
+            match sprite_item {
+                0 => sprite.tile = value,
+                1 => sprite.x = value,
+                2 => sprite.y = value,
+                3 => sprite.flags = value,
                 _ => (),
             }
             return;
         }
+        // gpu registers (0x1100) allow writing to chr ram
         match address {
-            256 => self.current_row = value,
-            257 => {
-                for y in 0..self.framebuffer.height {
-                    for x in 0..self.framebuffer.width {
-                        let pixel_address: usize = (y * self.framebuffer.width * 3) + (x * 3);
-                        let color = MODE13H_PALETTE[value as usize];
-                        self.framebuffer.pixels[pixel_address] = (color >> 16) as u8;
-                        self.framebuffer.pixels[pixel_address + 1] = ((color >> 8) & 0xff) as u8;
-                        self.framebuffer.pixels[pixel_address + 2] = (color & 0xff) as u8;
-                    }
-                }
-            }
-            258 => self.scroll_x = value,
-            259 => self.scroll_y = value,
-            260 => self.current_col = value,
-            261 => {
-                let pixel_address: usize = (self.current_row as usize * self.framebuffer.width * 3)
-                    + (self.current_col as usize * 3);
-                let color = MODE13H_PALETTE[value as usize];
-                self.framebuffer.pixels[pixel_address] = (color >> 16) as u8;
-                self.framebuffer.pixels[pixel_address + 1] = ((color >> 8) & 0xff) as u8;
-                self.framebuffer.pixels[pixel_address + 2] = (color & 0xff) as u8;
-            }
+            0x1100 => self.background_color = value,
+            0x1101 => self.scroll_x = value,
+            0x1102 => self.scroll_y = value,
+            0x1103 => self.current_col = value,
+            0x1104 => self.current_row = value,
+            0x1105 => self.chr_ram[self.current_row as usize * 256 + self.current_col as usize] = value,
             _ => (),
         }
     }
 
     fn read(&mut self, address: u16) -> u8 {
-        let mut value = 0;
-        if address >= 0x200 && address < 0x4000 {
-            let sprite_index = (address / 256) - 2;
-            let sprite_base = address - (sprite_index as u16 + 2) * 256;
-            let sprite = &self.sprites[sprite_index as usize];
-            match sprite_base {
-                64 => value = sprite.x,
-                65 => value = sprite.y,
-                66 => value = sprite.flags,
+        // background
+        if address < 0x1000 {
+            return self.background[address as usize];
+        }
+        // sprites
+        if address <= 0x10ff {
+            let sprite_index = (address - 0x1000) / 4;
+            let sprite_item = (address - 0x1000) % 4;
+            let sprite = &mut self.sprites[sprite_index as usize];
+            match sprite_item {
+                0 => return sprite.tile,
+                1 => return sprite.x,
+                2 => return sprite.y,
+                3 => return sprite.flags,
                 _ => (),
             }
-            return value;
+            return 0;
         }
-
+        // gpu registers (0x1100) allow writing to chr ram
         match address {
-            256 => value = self.current_row,
-            258 => value = self.scroll_x,
-            259 => value = self.scroll_y,
-            260 => value = self.current_col,
-            262 => value = self.input,
-            _ => (),
+            0x1100 => return self.background_color,
+            0x1101 => return self.scroll_x,
+            0x1102 => return self.scroll_y,
+            0x1103 => return self.current_col,
+            0x1104 => return self.current_row,
+            0x1105 => return self.chr_ram[self.current_row as usize * 256 + self.current_col as usize],
+            0x1106 => return self.input,
+            _ => return 0,
         }
-        return value;
     }
 }
 
@@ -384,7 +362,7 @@ fn main() {
 
     let ticks_per_frame = hz / 60;
 
-    let mut in_debugger = true;
+    let mut in_debugger = false;
 
     loop {
         let mut ticks_counter = ticks_per_frame as i64;
