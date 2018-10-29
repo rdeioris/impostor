@@ -112,27 +112,27 @@ impl AivFrameBuffer {
                 // get background tile for the pixel
                 let mut absolute_x = x as usize + self.scroll_x as usize;
                 let mut absolute_y = y as usize + self.scroll_y as usize;
-		if absolute_x > 255 {
-			match background_block {
-				0 => background_block = 1,
-				1 => background_block = 0,
-				2 => background_block = 3,
-				3 => background_block = 2,
-				_ => (),
-			}
-		}
-		if absolute_y > 255 {
-			match background_block {
-				0 => background_block = 2,
-				1 => background_block = 3,
-				2 => background_block = 0,
-				3 => background_block = 1,
-				_ => (),
-			}
-		}
+                if absolute_x > 255 {
+                    match background_block {
+                        0 => background_block = 1,
+                        1 => background_block = 0,
+                        2 => background_block = 3,
+                        3 => background_block = 2,
+                        _ => (),
+                    }
+                }
+                if absolute_y > 255 {
+                    match background_block {
+                        0 => background_block = 2,
+                        1 => background_block = 3,
+                        2 => background_block = 0,
+                        3 => background_block = 1,
+                        _ => (),
+                    }
+                }
 
-		absolute_x %= 256;
-		absolute_y %= 256;
+                absolute_x %= 256;
+                absolute_y %= 256;
 
                 let tile_x = absolute_x / background_tile_size;
                 let tile_y = absolute_y / background_tile_size;
@@ -159,7 +159,49 @@ impl AivFrameBuffer {
                 if tile_pixel_color != 0 {
                     self.write_pixel(x, y, tile_pixel_color);
                 }
-                // check each sprite
+            }
+        }
+
+        // check each sprite
+        for i in 0..=63 {
+            let sprite = self.sprites[i];
+            // check if the sprite is enabled
+            if sprite.flags & 0x01 == 0 {
+                continue;
+            }
+            let sprite_tile_size = if (sprite.flags >> 3) & 0x01 == 1 {
+                16
+            } else {
+                8
+            };
+            let sprite_x = sprite.x as usize;
+            let sprite_y = sprite.y as usize;
+            let scale = ((sprite.flags >> 4) + 1) as usize;
+
+            for y in 0..(sprite_tile_size * scale) {
+                for x in 0..(sprite_tile_size * scale) {
+                    let tile_pixel_x = x / scale;
+                    let tile_pixel_y = y / scale;
+                    let tile_chr_x = (sprite.tile as usize % (256 / sprite_tile_size))
+                        * sprite_tile_size
+                        + tile_pixel_x;
+                    let tile_chr_y = (sprite.tile as usize / (256 / sprite_tile_size))
+                        * sprite_tile_size
+                        + tile_pixel_y;
+                    let tile_address = tile_chr_y * 256 + tile_chr_x;
+                    let tile_pixel_color = self.chr_ram[tile_address];
+                    // write it in the framebuffer (if not 0)
+                    if tile_pixel_color != 0
+                        && sprite_x + x < self.framebuffer.width
+                        && sprite_y + y < self.framebuffer.height
+                    {
+                        self.write_pixel(
+                            (sprite_x + x) as u8,
+                            (sprite_y + y) as u8,
+                            tile_pixel_color,
+                        );
+                    }
+                }
             }
         }
         self.framebuffer
