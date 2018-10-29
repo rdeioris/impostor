@@ -403,6 +403,13 @@ fn main() {
                 .takes_value(true)
                 .value_name("file")
                 .help("attach a chr rom to the graphics ram"),
+        ).arg(
+            Arg::with_name("breakpoint")
+                .required(false)
+                .long("breakpoint")
+                .takes_value(true)
+                .value_name("address")
+                .help("set breakpoint to the specified comma separated list of addresses"),
         ).arg(Arg::with_name("romfile").index(1).required(true))
         .get_matches();
 
@@ -427,6 +434,14 @@ fn main() {
         Ok(value) => value,
         Err(_) => panic!("invalid number format for piano-speed"),
     };
+
+    let mut breakpoints: Vec<u16> = Vec::new();
+    if matches.is_present("breakpoint") {
+        let breakpoint_addresses = matches.value_of("breakpoint").unwrap().split(",");
+        for breakpoint_address in breakpoint_addresses {
+            breakpoints.push(to_number(breakpoint_address).unwrap());
+        }
+    }
 
     let mut rom = Rom::new(fs::read(romfile).unwrap());
 
@@ -485,6 +500,9 @@ fn main() {
     loop {
         let mut ticks_counter = ticks_per_frame as i64;
         while ticks_counter > 0 {
+            if breakpoints.contains(&cpu.pc) {
+                in_debugger = true;
+            }
             if in_debugger {
                 in_debugger = debugger(format!("${0:4X}>> ", cpu.pc), &mut cpu);
             }
