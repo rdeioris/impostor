@@ -56,7 +56,11 @@ struct AivFrameBuffer {
     scroll_x: u8,
     scroll_y: u8,
     input: u8,
-    background: [u8; 64 * 64],
+    background0: [u8; 32 * 32],
+    background1: [u8; 32 * 32],
+    background2: [u8; 32 * 32],
+    background3: [u8; 32 * 32],
+    background_mode: u8,
     sprites: [Sprite; 64],
     chr_ram: [u8; 256 * 256],
 }
@@ -73,7 +77,11 @@ impl AivFrameBuffer {
             scroll_x: 0,
             scroll_y: 0,
             input: 0,
-            background: [0; 64 * 64],
+            background0: [0; 32 * 32],
+            background1: [0; 32 * 32],
+            background2: [0; 32 * 32],
+            background3: [0; 32 * 32],
+            background_mode: 0,
             sprites: [sprite; 64],
             chr_ram: [0; 256 * 256],
         }
@@ -81,7 +89,7 @@ impl AivFrameBuffer {
 
     fn write_pixel(&mut self, x: u8, y: u8, color: u8) {
         let pixels = &mut self.framebuffer.pixels;
-        let pixel_address = (y as usize * self.framebuffer.width * 3) + (x as usize * 3); 
+        let pixel_address = (y as usize * self.framebuffer.width * 3) + (x as usize * 3);
         let color_rgb = MODE13H_PALETTE[color as usize];
         pixels[pixel_address] = (color_rgb >> 16) as u8;
         pixels[pixel_address + 1] = ((color_rgb >> 8) & 0xff) as u8;
@@ -90,22 +98,61 @@ impl AivFrameBuffer {
 
     fn vblank(&mut self) -> bool {
         self.screen.clear();
+        let background_tile_size = if self.background_mode & 0x01 == 1 {
+            16
+        } else {
+            8
+        };
         for y in 0..=255 {
             for x in 0..=255 {
+                let mut background_block = self.background_mode >> 1 & 0x03;
                 // set background color
                 let background_color = self.background_color;
                 self.write_pixel(x, y, background_color);
-		// get background tile for the pixel
-                let absolute_x = x as usize + self.scroll_x as usize;
-                let absolute_y = y as usize + self.scroll_y as usize;
-                let tile_x = absolute_x / 8;
-                let tile_y = absolute_y / 8;
-                let tile = self.background[tile_y * 64 + tile_x];
-		// get pixel tile
-                let tile_pixel_x = absolute_x % 8;
-                let tile_pixel_y = absolute_y % 8;
-                let tile_chr_x = (tile as usize % 32) * 8 + tile_pixel_x;
-                let tile_chr_y = (tile as usize / 32) * 8 + tile_pixel_y;
+                // get background tile for the pixel
+                let mut absolute_x = x as usize + self.scroll_x as usize;
+                let mut absolute_y = y as usize + self.scroll_y as usize;
+		if absolute_x > 255 {
+			match background_block {
+				0 => background_block = 1,
+				1 => background_block = 0,
+				2 => background_block = 3,
+				3 => background_block = 2,
+				_ => (),
+			}
+		}
+		if absolute_y > 255 {
+			match background_block {
+				0 => background_block = 2,
+				1 => background_block = 3,
+				2 => background_block = 0,
+				3 => background_block = 1,
+				_ => (),
+			}
+		}
+
+		absolute_x %= 256;
+		absolute_y %= 256;
+
+                let tile_x = absolute_x / background_tile_size;
+                let tile_y = absolute_y / background_tile_size;
+                let mut tile = 0;
+                match background_block {
+                    0 => tile = self.background0[tile_y * (256 / background_tile_size) + tile_x],
+                    1 => tile = self.background1[tile_y * (256 / background_tile_size) + tile_x],
+                    2 => tile = self.background2[tile_y * (256 / background_tile_size) + tile_x],
+                    3 => tile = self.background3[tile_y * (256 / background_tile_size) + tile_x],
+                    _ => (),
+                }
+                // get pixel tile
+                let tile_pixel_x = absolute_x % background_tile_size;
+                let tile_pixel_y = absolute_y % background_tile_size;
+                let tile_chr_x = (tile as usize % (256 / background_tile_size))
+                    * background_tile_size
+                    + tile_pixel_x;
+                let tile_chr_y = (tile as usize / (256 / background_tile_size))
+                    * background_tile_size
+                    + tile_pixel_y;
                 let tile_address = tile_chr_y * 256 + tile_chr_x;
                 let tile_pixel_color = self.chr_ram[tile_address];
                 // write it in the framebuffer (if not 0)
@@ -195,66 +242,67 @@ impl AivFrameBuffer {
 impl AddressBusIO<u16, u8> for AivFrameBuffer {
     fn write(&mut self, address: u16, value: u8) {
         // first 4k are for the background
-        if address < 0x1000 {
-            self.background[address as usize] = value;
-            return;
-        }
-        // a whole page is for sprite management (4 bytes for each sprite) 
-        // a total of 64 sprites is supported
-        if address <= 0x10ff {
-            let sprite_index = (address - 0x1000) / 4;
-            let sprite_item = (address - 0x1000) % 4;
-            let sprite = &mut self.sprites[sprite_index as usize];
-            match sprite_item {
-                0 => sprite.tile = value,
-                1 => sprite.x = value,
-                2 => sprite.y = value,
-                3 => sprite.flags = value,
-                _ => (),
-            }
-            return;
-        }
-        // gpu registers (0x1100) allow writing to chr ram
         match address {
+            0x0000..=0x03ff => self.background0[address as usize] = value,
+            0x0400..=0x07ff => self.background1[address as usize - 0x0400] = value,
+            0x0800..=0x0bff => self.background2[address as usize - 0x0800] = value,
+            0x0c00..=0x0fff => self.background3[address as usize - 0x0c00] = value,
+            // a whole page is for sprite management (4 bytes for each sprite)
+            // a total of 64 sprites is supported
+            0x1000..=0x10ff => {
+                let sprite_index = (address - 0x1000) / 4;
+                let sprite_item = (address - 0x1000) % 4;
+                let sprite = &mut self.sprites[sprite_index as usize];
+                match sprite_item {
+                    0 => sprite.tile = value,
+                    1 => sprite.x = value,
+                    2 => sprite.y = value,
+                    3 => sprite.flags = value,
+                    _ => (),
+                }
+            }
             0x1100 => self.background_color = value,
             0x1101 => self.scroll_x = value,
             0x1102 => self.scroll_y = value,
             0x1103 => self.current_col = value,
             0x1104 => self.current_row = value,
-            0x1105 => self.chr_ram[self.current_row as usize * 256 + self.current_col as usize] = value,
+            0x1105 => {
+                self.chr_ram[self.current_row as usize * 256 + self.current_col as usize] = value
+            }
+            0x1107 => self.background_mode = value,
             _ => (),
         }
     }
 
     fn read(&mut self, address: u16) -> u8 {
         // background
-        if address < 0x1000 {
-            return self.background[address as usize];
-        }
-        // sprites
-        if address <= 0x10ff {
-            let sprite_index = (address - 0x1000) / 4;
-            let sprite_item = (address - 0x1000) % 4;
-            let sprite = &mut self.sprites[sprite_index as usize];
-            match sprite_item {
-                0 => return sprite.tile,
-                1 => return sprite.x,
-                2 => return sprite.y,
-                3 => return sprite.flags,
-                _ => (),
-            }
-            return 0;
-        }
-        // gpu registers (0x1100) allow writing to chr ram
         match address {
-            0x1100 => return self.background_color,
-            0x1101 => return self.scroll_x,
-            0x1102 => return self.scroll_y,
-            0x1103 => return self.current_col,
-            0x1104 => return self.current_row,
-            0x1105 => return self.chr_ram[self.current_row as usize * 256 + self.current_col as usize],
-            0x1106 => return self.input,
-            _ => return 0,
+            0x0000..=0x03ff => self.background0[address as usize],
+            0x0400..=0x07ff => self.background1[address as usize - 0x0400],
+            0x0800..=0x0bff => self.background2[address as usize - 0x0800],
+            0x0c00..=0x0fff => self.background3[address as usize - 0x0c00],
+            0x1000..=0x10ff => {
+                let sprite_index = (address - 0x1000) / 4;
+                let sprite_item = (address - 0x1000) % 4;
+                let sprite = &mut self.sprites[sprite_index as usize];
+                match sprite_item {
+                    0 => sprite.tile,
+                    1 => sprite.x,
+                    2 => sprite.y,
+                    3 => sprite.flags,
+                    _ => 0,
+                }
+            }
+            // gpu registers (0x1100) allow writing to chr ram
+            0x1100 => self.background_color,
+            0x1101 => self.scroll_x,
+            0x1102 => self.scroll_y,
+            0x1103 => self.current_col,
+            0x1104 => self.current_row,
+            0x1105 => self.chr_ram[self.current_row as usize * 256 + self.current_col as usize],
+            0x1106 => self.input,
+            0x1107 => self.background_mode,
+            _ => 0,
         }
     }
 }
@@ -296,6 +344,13 @@ fn main() {
                 .value_name("milliseconds")
                 .help("set duration of a piano note")
                 .default_value("125"),
+        ).arg(
+            Arg::with_name("chr-rom")
+                .required(false)
+                .long("chr-rom")
+                .takes_value(true)
+                .value_name("file")
+                .help("attach a chr rom to the graphics ram"),
         ).arg(Arg::with_name("romfile").index(1).required(true))
         .get_matches();
 
@@ -338,6 +393,17 @@ fn main() {
     let framebuffer = Framebuffer::new(256, 256);
 
     let aiv_framebuffer = Rc::new(RefCell::new(AivFrameBuffer::new(screen, framebuffer)));
+
+    if matches.is_present("chr-rom") {
+        let chrfile = matches.value_of("chr-rom").unwrap();
+        let mut index = 0;
+        let chr_ram = &mut aiv_framebuffer.borrow_mut().chr_ram;
+        // here we use a cycle as the chr file could be < 65536
+        for pixel in fs::read(chrfile).unwrap() {
+            chr_ram[index] = pixel;
+            index += 1;
+        }
+    }
 
     let mut memory_controller = MemoryControllerSmart::new();
     memory_controller.map(0x0000, 0x1fff, &mut ram);
