@@ -215,7 +215,7 @@ impl AivFrameBuffer {
             }
         }
         self.framebuffer
-            .blit(&self.screen, 0, 0, self.screen.width, self.screen.height);
+            .blit(&self.screen, 0, 0, self.screen.width, self.screen.height, self.screen.gl_window.get_hidpi_factor() as usize);
         self.screen.swap();
 
         let mut input_state = self.input;
