@@ -43,12 +43,6 @@ impl<T: AddressBusIO<u16, u8>> Chip8<T> {
         self.bus.read(addr)
     }
 
-    fn read16(&mut self, addr: u16) -> u16 {
-        let high = self.read8(addr) as u16;
-        let low = self.read8(addr + 1) as u16;
-        return (high << 8) | low;
-    }
-
     fn write8(&mut self, addr: u16, value: u8) {
         self.bus.write(addr, value)
     }

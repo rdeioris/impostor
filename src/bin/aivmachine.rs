@@ -20,6 +20,7 @@ use impostor::graphics::{Framebuffer, Screen, WindowEvent};
 use impostor::input::{ElementState, VirtualKeyCode};
 
 use impostor::AddressBusIO;
+use impostor::Debug;
 use impostor::Interrupt;
 
 use impostor::debugger::debugger;
@@ -215,7 +216,7 @@ impl AivFrameBuffer {
             }
         }
         self.framebuffer
-            .blit(&self.screen, 0, 0, self.screen.width, self.screen.height, self.screen.gl_window.get_hidpi_factor() as usize);
+            .blit(&self.screen, 0, 0, self.screen.width, self.screen.height);
         self.screen.swap();
 
         let mut input_state = self.input;
@@ -373,6 +374,10 @@ fn main() {
                 .long("no-vblank")
                 .help("disable NMI interrupt on vblank"),
         ).arg(
+            Arg::with_name("code-breakpoint")
+                .long("code-breakpoint")
+                .help("enable code-driven breakpoints"),
+        ).arg(
             Arg::with_name("pc")
                 .required(false)
                 .long("pc")
@@ -497,14 +502,16 @@ fn main() {
 
     let mut in_debugger = false;
 
+    cpu.set_code_breakpoint(matches.is_present("code-breakpoint"));
+
     loop {
         let mut ticks_counter = ticks_per_frame as i64;
         while ticks_counter > 0 {
-            if breakpoints.contains(&cpu.pc) {
+            if cpu.is_code_breakpoint_requested() || breakpoints.contains(&cpu.pc) {
                 in_debugger = true;
             }
             if in_debugger {
-                in_debugger = debugger(format!("${0:4X}>> ", cpu.pc), &mut cpu);
+                in_debugger = debugger(&mut cpu);
             }
             cpu.step();
             if cpu.debug {

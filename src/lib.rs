@@ -21,14 +21,6 @@ pub trait AddressBusIO<T: Address, U: Data> {
         U::zero()
     }
     fn write(&mut self, _address: T, _value: U) {}
-
-    fn address_str(&self, address: T) -> String {
-        format!("${:X}", address)
-    }
-
-    fn data_str(&self, data: U) -> String {
-        format!("${:X}", data)
-    }
 }
 
 pub trait Clock {
@@ -37,6 +29,18 @@ pub trait Clock {
 
 pub trait Interrupt<T: Address> {
     fn raise(&mut self, _line: T);
+}
+
+pub trait Debug<T: Address, U: Data> {
+    fn inspect(&mut self, _address: T) -> U;
+    fn inject(&mut self, _address: T, _value: U);
+    fn address_str(&self, address: T) -> String;
+    fn data_str(&self, data: U) -> String;
+    fn set_cursor(&mut self, address: T);
+    fn get_cursor(&self) -> T;
+    fn next(&mut self);
+    fn set_code_breakpoint(&mut self, bool);
+    fn is_code_breakpoint_requested(&mut self) -> bool;
 }
 
 pub mod adapter;

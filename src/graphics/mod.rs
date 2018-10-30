@@ -12,7 +12,7 @@ pub struct Screen {
     pub width: usize,
     pub height: usize,
     pub event_loop: glutin::EventsLoop,
-    pub gl_window: glutin::GlWindow,
+    gl_window: glutin::GlWindow,
 }
 
 impl Screen {
@@ -41,7 +41,7 @@ impl Screen {
             gl::load_with(|symbol| screen.gl_window.get_proc_address(symbol) as *const _);
             gl::ClearColor(0.0, 0.0, 0.0, 1.0);
         }
-        
+
         return screen;
     }
 
@@ -56,7 +56,10 @@ impl Screen {
         });
         // Fix for macOS Mojave that has rendering issues
         if cfg!(target_os = "macos") {
-            self.gl_window.resize(glutin::dpi::PhysicalSize::new(self.width as f64, self.height as f64));
+            self.gl_window.resize(glutin::dpi::PhysicalSize::new(
+                self.width as f64,
+                self.height as f64,
+            ));
         }
     }
 
@@ -115,7 +118,7 @@ impl Framebuffer {
         }
     }
 
-    pub fn blit(&self, screen: &Screen, x: usize, y: usize, width: usize, height: usize, scale_size: usize) {
+    pub fn blit(&self, screen: &Screen, x: usize, y: usize, width: usize, height: usize) {
         unsafe {
             gl::BindTexture(gl::TEXTURE_2D, self.texture);
             gl::TexImage2D(
@@ -136,8 +139,8 @@ impl Framebuffer {
                 self.width as i32,
                 self.height as i32,
                 x as i32,
-                ((screen.height * scale_size) - y) as i32,
-                (x + (width * scale_size)) as i32,
+                ((screen.height * screen.gl_window.get_hidpi_factor() as usize) - y) as i32,
+                (x + (width * screen.gl_window.get_hidpi_factor() as usize)) as i32,
                 (screen.height - y - height) as i32,
                 gl::COLOR_BUFFER_BIT,
                 gl::NEAREST,

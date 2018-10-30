@@ -1,7 +1,7 @@
 extern crate rustyline;
 use self::rustyline::Editor;
 
-use {Address, AddressBusIO, Data};
+use {Address, Data, Debug};
 
 use std::num::ParseIntError;
 use utils::to_number;
@@ -9,13 +9,14 @@ use utils::to_number;
 pub fn debugger<
     T: Address<FromStrRadixErr = ParseIntError>,
     U: Data<FromStrRadixErr = ParseIntError>,
+    V: Debug<T, U>,
 >(
-    prompt: String,
-    bus: &mut AddressBusIO<T, U>,
+    debugged: &mut V,
 ) -> bool {
     let mut rl = Editor::<()>::new();
     loop {
-        let readline = rl.readline(prompt.as_ref());
+        let readline =
+            rl.readline(format!("{}>>", debugged.address_str(debugged.get_cursor())).as_ref());
         match readline {
             Ok(line) => {
                 rl.add_history_entry(line.as_ref());
@@ -28,15 +29,16 @@ pub fn debugger<
                                     Ok(qt) => {
                                         let mut counter = T::zero();
                                         let mut next_line = 0;
-                                        print!("{}: ", bus.address_str(address + counter));
+                                        print!("{}: ", debugged.address_str(address + counter));
                                         while counter < qt {
-                                            let data = bus.read(address + counter);
-                                            print!("{} ", bus.data_str(data));
+                                            let data = debugged.inspect(address + counter);
+                                            print!("{} ", debugged.data_str(data));
                                             if next_line == 15 {
                                                 println!("");
                                                 print!(
                                                     "{}: ",
-                                                    bus.address_str(address + counter + T::one())
+                                                    debugged
+                                                        .address_str(address + counter + T::one())
                                                 );
                                                 next_line = 0;
                                             } else {
@@ -48,7 +50,7 @@ pub fn debugger<
                                     }
                                     Err(err) => println!("Error: {}", err),
                                 },
-                                None => println!("${:02X}", bus.read(address)),
+                                None => println!("${:02X}", debugged.inspect(address)),
                             },
                             Err(err) => println!("Error: {}", err),
                         },
@@ -59,12 +61,21 @@ pub fn debugger<
                             Ok(address) => match iter.next() {
                                 Some(argument) => match to_number::<U>(argument) {
                                     Ok(data) => {
-                                        bus.write(address, data);
+                                        debugged.inject(address, data);
                                     }
                                     Err(err) => println!("Error: {}", err),
                                 },
                                 _ => println!("syntax: w <address> <value>"),
                             },
+                            Err(err) => println!("Error: {}", err),
+                        },
+                        _ => println!("syntax: w <address> <value>"),
+                    },
+                    Some("j") => match iter.next() {
+                        Some(value) => match to_number::<T>(value) {
+                            Ok(address) => {
+                                debugged.set_cursor(address);
+                            }
                             Err(err) => println!("Error: {}", err),
                         },
                         _ => println!("syntax: w <address> <value>"),
@@ -78,7 +89,7 @@ pub fn debugger<
             }
             Err(err) => {
                 println!("Error: {}", err);
-                return true;
+                return false;
             }
         }
     }

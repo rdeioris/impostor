@@ -1,4 +1,4 @@
-use {AddressBusIO, Clock, Interrupt};
+use {AddressBusIO, Clock, Debug, Interrupt};
 
 const CARRY: u8 = 0x01;
 const ZERO: u8 = 0x02;
@@ -43,6 +43,9 @@ pub struct MOS6502<T: AddressBusIO<u16, u8>> {
     value: u8,
     addr: u16,
 
+    code_breakpoint: bool,
+    requested_code_breakpoint: bool,
+
     current_opcode: u8,
     opcode: OpCode<T>,
 
@@ -83,6 +86,9 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
             debug_line: "".to_string(),
 
             opcodes: [noop; 256],
+
+            code_breakpoint: false,
+            requested_code_breakpoint: false,
 
             debug: false,
 
@@ -864,7 +870,11 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
     }
 
     fn brk(&mut self) {
-        self.interrupt(0xfffe);
+        if self.code_breakpoint {
+            self.requested_code_breakpoint = true;
+        } else {
+            self.interrupt(0xfffe);
+        }
     }
 
     fn interrupt(&mut self, address: u16) {
@@ -967,13 +977,45 @@ impl<T: AddressBusIO<u16, u8>> AddressBusIO<u16, u8> for MOS6502<T> {
     fn write(&mut self, address: u16, data: u8) {
         self.write8(address, data)
     }
+}
 
+impl<T: AddressBusIO<u16, u8>> Debug<u16, u8> for MOS6502<T> {
     fn address_str(&self, address: u16) -> String {
         format!("${:04X}", address)
     }
 
     fn data_str(&self, data: u8) -> String {
         format!("${:02X}", data)
+    }
+
+    fn inspect(&mut self, address: u16) -> u8 {
+        self.read(address)
+    }
+
+    fn inject(&mut self, address: u16, data: u8) {
+        self.write(address, data);
+    }
+
+    fn get_cursor(&self) -> u16 {
+        self.pc
+    }
+
+    fn next(&mut self) {
+        self.step();
+    }
+
+    fn set_cursor(&mut self, address: u16) {
+        self.pc = address;
+    }
+
+    fn set_code_breakpoint(&mut self, enable: bool) {
+        self.code_breakpoint = enable;
+    }
+
+    fn is_code_breakpoint_requested(&mut self) -> bool {
+        let requested = self.requested_code_breakpoint;
+        self.requested_code_breakpoint = false;
+        return requested;
     }
 }
 
