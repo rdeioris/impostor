@@ -30,7 +30,8 @@ impl Screen {
 
         let event_loop = glutin::EventsLoop::new();
 
-        let gl_window = glutin::GlWindow::new(window_builder, context_builder, &event_loop).unwrap();
+        let gl_window =
+            glutin::GlWindow::new(window_builder, context_builder, &event_loop).unwrap();
 
         let screen = Screen {
             width,
@@ -60,9 +61,9 @@ impl Screen {
         });
         // Fix for macOS Mojave that has rendering issues
         if cfg!(target_os = "macos") {
-            self.gl_window.resize(glutin::dpi::PhysicalSize::new(
-                self.width as f64,
-                self.height as f64,
+            self.gl_window.resize(PhysicalSize::from_logical(
+                self.logical_size,
+                self.gl_window.get_hidpi_factor(),
             ));
         }
     }
@@ -125,7 +126,7 @@ impl Framebuffer {
     pub fn blit(&self, screen: &Screen, x: usize, y: usize, width: usize, height: usize) {
         // required for correct size when monitor dpi changes
         let dpi_factor = screen.gl_window.get_hidpi_factor();
-	let physical_size = PhysicalSize::from_logical(screen.logical_size, dpi_factor); 
+        let physical_size = PhysicalSize::from_logical(screen.logical_size, dpi_factor);
         unsafe {
             gl::BindTexture(gl::TEXTURE_2D, self.texture);
             gl::TexImage2D(
