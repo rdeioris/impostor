@@ -394,6 +394,14 @@ fn main() {
                 .help("set ticks per second")
                 .default_value("1000000"),
         ).arg(
+            Arg::with_name("vsync")
+                .required(false)
+                .long("vsync")
+                .takes_value(true)
+                .value_name("hz")
+                .help("specify the vsync hz")
+                .default_value("60"),
+        ).arg(
             Arg::with_name("piano-speed")
                 .required(false)
                 .long("piano-speed")
@@ -425,14 +433,19 @@ fn main() {
         Err(_) => panic!("invalid address format for pc"),
     };
 
+    let vsync: u32 = match to_number(matches.value_of("vsync").unwrap()) {
+        Ok(value) => value,
+        Err(_) => panic!("invalid number format for vsync"),
+    };
+
     let mut hz: u32 = match to_number(matches.value_of("hz").unwrap()) {
         Ok(value) => value,
         Err(_) => panic!("invalid number format for hz"),
     };
 
-    if hz < 60 {
-        println!("WARNING: forcing hz to minimal value: 60");
-        hz = 60;
+    if hz < vsync {
+        println!("WARNING: forcing hz to minimal value: {}", vsync);
+        hz = vsync;
     }
 
     let piano_speed: u64 = match to_number(matches.value_of("piano-speed").unwrap()) {
@@ -498,7 +511,7 @@ fn main() {
 
     let mut last_ticks: u64 = 0;
 
-    let ticks_per_frame = hz / 60;
+    let ticks_per_frame = hz / vsync;
 
     let mut in_debugger = false;
 
