@@ -574,8 +574,8 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
 
     fn asl_a(&mut self) {
         let mut a = self.a;
-        self.set_flag(CARRY, (a & 0x01) == 0x01);
-        a >>= 1;
+        self.set_flag(CARRY, (a >> 7) == 0x01);
+        a <<= 1;
         self.a = a;
         self.set_flag(ZERO, a == 0);
         self.set_flag(SIGN, a >> 7 == 1);
@@ -605,8 +605,8 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
 
     fn lsr_a(&mut self) {
         let mut a = self.a;
-        self.set_flag(CARRY, (a >> 7) == 0x01);
-        a <<= 1;
+        self.set_flag(CARRY, (a & 0x01) == 0x01);
+        a >>= 1;
         self.a = a;
         self.set_flag(ZERO, a == 0);
         self.set_flag(SIGN, a >> 7 == 1);
@@ -1040,3 +1040,6 @@ impl<T: AddressBusIO<u16, u8>> Interrupt<u16> for MOS6502<T> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

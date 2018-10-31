@@ -22,32 +22,4 @@ impl<'a, T: Address + As<V>, U: Data + As<Z>, V: Address + As<T>, Z: Data + As<U
 }
 
 #[cfg(test)]
-mod tests {
-    use adapter::BusAdapter;
-    use {Address, AddressBusIO, Data};
-
-    struct TestAddressBusIO<T: Address, U: Data> {
-        address: T,
-        data: U,
-    }
-    impl<T: Address, U: Data> Default for TestAddressBusIO<T, U> {
-        fn default() -> TestAddressBusIO<T, U> {
-            TestAddressBusIO {
-                address: T::zero(),
-                data: U::zero(),
-            }
-        }
-    }
-    impl<T: Address, U: Data> AddressBusIO<T, U> for TestAddressBusIO<T, U> {
-        fn read(&mut self, address: T) -> U {
-            U::one()
-        }
-    }
-
-    #[test]
-    fn converto_to_lower() {
-        let mut bus: TestAddressBusIO<u8, u8> = TestAddressBusIO::default();
-        let mut adapter = BusAdapter::new(&mut bus);
-        assert_eq!(<AddressBusIO<u32, u32>>::read(&mut adapter, 0xaabbccdd), 1);
-    }
-}
+mod tests;
