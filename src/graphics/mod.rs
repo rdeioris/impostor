@@ -3,37 +3,41 @@ extern crate glutin;
 
 use std::mem;
 
-use graphics::glutin::GlContext;
+use self::glutin::GlContext;
 
-pub use graphics::glutin::{ElementState, VirtualKeyCode, WindowEvent};
+pub use self::glutin::{ElementState, VirtualKeyCode, WindowEvent};
 pub mod vga_mode13h_palette;
+use self::glutin::dpi::{LogicalSize, PhysicalSize};
 
 pub struct Screen {
     pub width: usize,
     pub height: usize,
     pub event_loop: glutin::EventsLoop,
     gl_window: glutin::GlWindow,
+    logical_size: LogicalSize,
 }
 
 impl Screen {
     pub fn new(title: &'static str, width: usize, height: usize) -> Screen {
-        let logical_size = glutin::dpi::LogicalSize::new(width as f64, height as f64);
+        let logical_size = LogicalSize::new(width as f64, height as f64);
 
-        let window = glutin::WindowBuilder::new()
+        let window_builder = glutin::WindowBuilder::new()
             .with_title(title)
+            .with_resizable(false)
             .with_dimensions(logical_size);
 
-        let context = glutin::ContextBuilder::new().with_vsync(true);
+        let context_builder = glutin::ContextBuilder::new().with_vsync(true);
 
         let event_loop = glutin::EventsLoop::new();
 
-        let gl_window = glutin::GlWindow::new(window, context, &event_loop).unwrap();
+        let gl_window = glutin::GlWindow::new(window_builder, context_builder, &event_loop).unwrap();
 
         let screen = Screen {
             width,
             height,
             event_loop,
             gl_window,
+            logical_size,
         };
 
         unsafe {
@@ -119,6 +123,9 @@ impl Framebuffer {
     }
 
     pub fn blit(&self, screen: &Screen, x: usize, y: usize, width: usize, height: usize) {
+        // required for correct size when monitor dpi changes
+        let dpi_factor = screen.gl_window.get_hidpi_factor();
+	let physical_size = PhysicalSize::from_logical(screen.logical_size, dpi_factor); 
         unsafe {
             gl::BindTexture(gl::TEXTURE_2D, self.texture);
             gl::TexImage2D(
@@ -138,10 +145,10 @@ impl Framebuffer {
                 0,
                 self.width as i32,
                 self.height as i32,
-                x as i32,
-                ((screen.height * screen.gl_window.get_hidpi_factor() as usize) - y) as i32,
-                (x + (width * screen.gl_window.get_hidpi_factor() as usize)) as i32,
-                (screen.height - y - height) as i32,
+                (x as f64 * dpi_factor) as i32,
+                (physical_size.height - (y as f64 * dpi_factor)) as i32,
+                ((x + width) as f64 * dpi_factor) as i32,
+                (physical_size.height - ((y + height) as f64 * dpi_factor)) as i32,
                 gl::COLOR_BUFFER_BIT,
                 gl::NEAREST,
             );
