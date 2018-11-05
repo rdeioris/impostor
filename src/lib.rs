@@ -52,6 +52,7 @@ pub mod adapter;
 pub mod audio;
 pub mod chip8;
 pub mod debugger;
+pub mod dma;
 pub mod graphics;
 pub mod input;
 pub mod memcontroller;
@@ -59,10 +60,10 @@ pub mod mos6502;
 pub mod ram;
 pub mod random;
 pub mod rom;
+pub mod storage;
 pub mod timer;
 pub mod unixterm;
 pub mod utils;
-pub mod storage;
 
 #[cfg(test)]
 mod tests;
