@@ -323,6 +323,7 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
 
     fn absolute_x(&mut self) {
         let addr = self.read16_from_pc();
+        let original_addr = addr;
         let mut boundary = 0;
         let addr_x = addr + self.x as u16;
         if addr >> 8 != addr_x >> 8 {
@@ -332,12 +333,18 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
         self.value = self.read8(addr_x);
         self.ticks += 4 + boundary;
         if self.debug {
-            self.debug_line = format!("{} ${:04X},X", self.get_opcode_name(), self.addr);
+            self.debug_line = format!(
+                "{} ${:04X},X (absolute addr: ${:04X})",
+                self.get_opcode_name(),
+                original_addr,
+                self.addr
+            );
         }
     }
 
     fn absolute_y(&mut self) {
         let addr = self.read16_from_pc();
+        let original_addr = addr;
         let mut boundary = 0;
         let addr_y = addr + self.y as u16;
         if addr >> 8 != addr_y >> 8 {
@@ -347,29 +354,46 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
         self.value = self.read8(addr_y);
         self.ticks += 4 + boundary;
         if self.debug {
-            self.debug_line = format!("{} ${:04X},Y", self.get_opcode_name(), self.addr);
+            self.debug_line = format!(
+                "{} ${:04X},Y (absolute addr: ${:04X})",
+                self.get_opcode_name(),
+                original_addr,
+                self.addr
+            );
         }
     }
 
     fn zeropage_x(&mut self) {
         // leave it as u8 to allow overflowing
-        let addr = self.read8_from_pc() + self.x;
+        let original_addr = self.read8_from_pc();
+        let addr = original_addr + self.x;
         self.addr = addr as u16;
         self.value = self.read8(addr as u16);
         self.ticks += 3;
         if self.debug {
-            self.debug_line = format!("{} ${:02X},X", self.get_opcode_name(), self.addr);
+            self.debug_line = format!(
+                "{} ${:02X},X (zeropage addr: ${:02X})",
+                self.get_opcode_name(),
+                original_addr,
+                self.addr
+            );
         }
     }
 
     fn zeropage_y(&mut self) {
         // leave it as u8 to allow overflowing
-        let addr = self.read8_from_pc() + self.y;
+        let original_addr = self.read8_from_pc();
+        let addr = original_addr + self.y;
         self.addr = addr as u16;
         self.value = self.read8(addr as u16);
         self.ticks += 3;
         if self.debug {
-            self.debug_line = format!("{} ${:02X},Y", self.get_opcode_name(), self.addr);
+            self.debug_line = format!(
+                "{} ${:02X},Y (zeropage addr: ${:02X})",
+                self.get_opcode_name(),
+                original_addr,
+                self.addr
+            );
         }
     }
 

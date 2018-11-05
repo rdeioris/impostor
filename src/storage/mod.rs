@@ -17,7 +17,11 @@ pub struct BlockDevice {
 impl BlockDevice {
     pub fn new(mut file: File, block_size: usize) -> BlockDevice {
         let max_size = file.seek(SeekFrom::End(0)).unwrap();
-        BlockDevice { file, block_size, max_size }
+        BlockDevice {
+            file,
+            block_size,
+            max_size,
+        }
     }
 
     pub fn from_filename<P: AsRef<Path>>(filename: P, block_size: usize) -> BlockDevice {
@@ -25,7 +29,8 @@ impl BlockDevice {
             .read(true)
             .write(true)
             .create(true)
-            .open(filename).unwrap();
+            .open(filename)
+            .unwrap();
         let max_size = file.seek(SeekFrom::End(0)).unwrap();
         BlockDevice {
             file: file,
@@ -41,9 +46,7 @@ impl<T: Address + As<usize>> AddressBusBlockIO<T, u8> for BlockDevice {
         if offset + self.block_size as u64 >= self.max_size {
             return;
         }
-        self.file
-            .seek(SeekFrom::Start(offset))
-            .unwrap();
+        self.file.seek(SeekFrom::Start(offset)).unwrap();
         self.file.read(buffer).unwrap();
     }
 
@@ -52,9 +55,7 @@ impl<T: Address + As<usize>> AddressBusBlockIO<T, u8> for BlockDevice {
         if offset + self.block_size as u64 >= self.max_size {
             return;
         }
-        self.file
-            .seek(SeekFrom::Start(offset))
-            .unwrap();
+        self.file.seek(SeekFrom::Start(offset)).unwrap();
         self.file.write(buffer).unwrap();
         self.file.sync_all().unwrap();
     }
