@@ -20,8 +20,9 @@ impl BlockDevice {
 
     pub fn from_filename<P: AsRef<Path>>(filename: P, block_size: usize) -> BlockDevice {
         let file = OpenOptions::new()
+            .read(true)
             .write(true)
-            .create_new(true)
+            .create(true)
             .open(filename);
         BlockDevice {
             file: file.unwrap(),
@@ -43,5 +44,6 @@ impl<T: Address + As<usize>> AddressBusBlockIO<T, u8> for BlockDevice {
             .seek(SeekFrom::Start((address.as_() * self.block_size) as u64))
             .unwrap();
         self.file.write(buffer).unwrap();
+        self.file.sync_all().unwrap();
     }
 }

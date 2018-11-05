@@ -19,6 +19,8 @@ use impostor::graphics::vga_mode13h_palette::MODE13H_PALETTE;
 use impostor::graphics::{Framebuffer, Screen, WindowEvent};
 use impostor::input::{ElementState, VirtualKeyCode};
 
+use impostor::dma::DmaBlock;
+use impostor::storage::BlockDevice;
 use impostor::AddressBusIO;
 use impostor::Debug;
 use impostor::Interrupt;
@@ -417,6 +419,13 @@ fn main() {
                 .value_name("file")
                 .help("attach a chr rom to the graphics ram"),
         ).arg(
+            Arg::with_name("storage")
+                .required(false)
+                .long("storage")
+                .takes_value(true)
+                .value_name("file")
+                .help("attach a file-backed block device"),
+        ).arg(
             Arg::with_name("breakpoint")
                 .required(false)
                 .long("breakpoint")
@@ -463,7 +472,7 @@ fn main() {
 
     let mut rom = Rom::new(fs::read(romfile).unwrap());
 
-    let mut ram = Ram::new(4096);
+    let ram = Rc::new(RefCell::new(Ram::new(4096)));
 
     let mut term8 = UnixTerm::new();
 
@@ -491,7 +500,8 @@ fn main() {
     }
 
     let mut memory_controller = MemoryControllerSmart::new();
-    memory_controller.map(0x0000, 0x1fff, &mut ram);
+    let borrowed_ram = Rc::clone(&ram);
+    memory_controller.map_shared(0x0000, 0x1fff, borrowed_ram);
     memory_controller.map(0x2000, 0x2003, &mut term);
 
     memory_controller.map(0x2004, 0x2004, &mut piano);
@@ -502,6 +512,17 @@ fn main() {
     memory_controller.map_shared(0x4000, 0x7fff, borrowed_aiv_framebuffer);
 
     memory_controller.map(0xc000, 0xffff, &mut rom);
+
+    let mut dma: Option<Rc<RefCell<DmaBlock<u16>>>> = None;
+    let has_storage = matches.is_present("storage");
+    if has_storage {
+        let block_device = BlockDevice::from_filename(matches.value_of("storage").unwrap(), 256);
+        let dma_block = Rc::new(RefCell::new(DmaBlock::new(block_device, ram)));
+        let borrowed_dma_block = Rc::clone(&dma_block);
+        dma = Some(borrowed_dma_block);
+        let borrowed_dma = Rc::clone(&dma_block);
+        memory_controller.map_shared(0x200a, 0x200d, borrowed_dma);
+    }
 
     let mut cpu = MOS6502::new(memory_controller);
     cpu.pc = pc;
@@ -526,7 +547,14 @@ fn main() {
             if in_debugger {
                 in_debugger = debugger(&mut cpu);
             }
+
             cpu.step();
+
+            match dma.as_mut() {
+                Some(block_device_dma) => block_device_dma.borrow_mut().step(),
+                _ => (),
+            }
+
             if cpu.debug {
                 println!("[{:04X}] {}", cpu.debug_pc, cpu.debug_line);
             }

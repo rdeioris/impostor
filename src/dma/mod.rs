@@ -35,9 +35,9 @@ impl<T: Address + As<usize>> Clock for DmaBlock<T> {
             return;
         }
 
-        let current_block = self.block - T::from(self.blocks_to_transfer).unwrap();
-        let address = self.address
-            + ((current_block - self.block) * T::from(self.block_device.block_size).unwrap());
+        let current_block = self.block;
+        let address = self.address;
+
         let mut cache_block = vec![0; self.block_device.block_size];
 
         if self.flags & 0x01 == 1 {
@@ -46,7 +46,6 @@ impl<T: Address + As<usize>> Clock for DmaBlock<T> {
                 cache_block[i] = self.bus.borrow_mut().read(address + T::from(i).unwrap());
             }
             self.block_device.write(current_block, &cache_block);
-            self.blocks_to_transfer -= 1;
         } else {
             // block to bus
             self.block_device.read(current_block, &mut cache_block);
@@ -55,8 +54,11 @@ impl<T: Address + As<usize>> Clock for DmaBlock<T> {
                     .borrow_mut()
                     .write(address + T::from(i).unwrap(), cache_block[i]);
             }
-            self.blocks_to_transfer -= 1;
         }
+
+        self.blocks_to_transfer -= 1;
+        self.block += T::one();
+        self.address += T::from(self.block_device.block_size).unwrap();
     }
 }
 
@@ -64,21 +66,28 @@ impl AddressBusIO<u16, u8> for DmaBlock<u16> {
     fn write(&mut self, address: u16, value: u8) {
         match address {
             0 => {
-                self.block |= (value as u16) >> (8 * self.block_counter);
+                self.block |= (value as u16) << (8 * (1 - self.block_counter));
                 self.block_counter += 1;
                 if self.block_counter > 1 {
                     self.block_counter = 0;
                 }
             }
             1 => {
-                self.address |= (value as u16) >> (8 * self.address_counter);
+                self.address |= (value as u16) << (8 * (1 - self.address_counter));
                 self.address_counter += 1;
                 if self.address_counter > 1 {
                     self.address_counter = 0;
                 }
             }
             2 => self.blocks_to_transfer = value,
-            3 => self.flags = value,
+            3 => {
+                self.flags = value;
+                self.block = 0;
+                self.blocks_to_transfer = 0;
+                self.address = 0;
+                self.block_counter = 0;
+                self.address_counter = 0;
+            }
             _ => (),
         }
     }
