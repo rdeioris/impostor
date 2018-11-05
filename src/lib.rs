@@ -23,6 +23,11 @@ pub trait AddressBusIO<T: Address, U: Data> {
     fn write(&mut self, _address: T, _value: U) {}
 }
 
+pub trait AddressBusBlockIO<T: Address, U: Data> {
+    fn read(&mut self, address: T, buffer: &mut [U]);
+    fn write(&mut self, address: T, buffer: &[U]);
+}
+
 pub trait Clock {
     fn step(&mut self);
 }
@@ -57,6 +62,7 @@ pub mod rom;
 pub mod timer;
 pub mod unixterm;
 pub mod utils;
+pub mod storage;
 
 #[cfg(test)]
 mod tests;
