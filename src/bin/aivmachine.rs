@@ -101,66 +101,70 @@ impl AivFrameBuffer {
 
     fn vblank(&mut self) -> bool {
         self.screen.clear();
-        let background_tile_size = if self.background_mode & 0x01 == 1 {
-            16
-        } else {
-            8
-        };
-        for y in 0..=255 {
-            for x in 0..=255 {
-                let mut background_block = self.background_mode >> 1 & 0x03;
-                // set background color
-                let background_color = self.background_color;
-                self.write_pixel(x, y, background_color);
-                // get background tile for the pixel
-                let mut absolute_x = x as usize + self.scroll_x as usize;
-                let mut absolute_y = y as usize + self.scroll_y as usize;
-                if absolute_x > 255 {
+
+        let background_enabled = self.background_mode >> 3 & 0x01;
+        if background_enabled == 1 {
+            let background_tile_size = if self.background_mode & 0x01 == 1 {
+                16
+            } else {
+                8
+            };
+            for y in 0..=255 {
+                for x in 0..=255 {
+                    let mut background_block = self.background_mode >> 1 & 0x03;
+                    // set background color
+                    let background_color = self.background_color;
+                    self.write_pixel(x, y, background_color);
+                    // get background tile for the pixel
+                    let mut absolute_x = x as usize + self.scroll_x as usize;
+                    let mut absolute_y = y as usize + self.scroll_y as usize;
+                    if absolute_x > 255 {
+                        match background_block {
+                            0 => background_block = 1,
+                            1 => background_block = 0,
+                            2 => background_block = 3,
+                            3 => background_block = 2,
+                            _ => (),
+                        }
+                    }
+                    if absolute_y > 255 {
+                        match background_block {
+                            0 => background_block = 2,
+                            1 => background_block = 3,
+                            2 => background_block = 0,
+                            3 => background_block = 1,
+                            _ => (),
+                        }
+                    }
+
+                    absolute_x %= 256;
+                    absolute_y %= 256;
+
+                    let tile_x = absolute_x / background_tile_size;
+                    let tile_y = absolute_y / background_tile_size;
+                    let mut tile = 0;
                     match background_block {
-                        0 => background_block = 1,
-                        1 => background_block = 0,
-                        2 => background_block = 3,
-                        3 => background_block = 2,
+                        0 => tile = self.background0[tile_y * (256 / background_tile_size) + tile_x],
+                        1 => tile = self.background1[tile_y * (256 / background_tile_size) + tile_x],
+                        2 => tile = self.background2[tile_y * (256 / background_tile_size) + tile_x],
+                        3 => tile = self.background3[tile_y * (256 / background_tile_size) + tile_x],
                         _ => (),
                     }
-                }
-                if absolute_y > 255 {
-                    match background_block {
-                        0 => background_block = 2,
-                        1 => background_block = 3,
-                        2 => background_block = 0,
-                        3 => background_block = 1,
-                        _ => (),
+                    // get pixel tile
+                    let tile_pixel_x = absolute_x % background_tile_size;
+                    let tile_pixel_y = absolute_y % background_tile_size;
+                    let tile_chr_x = (tile as usize % (256 / background_tile_size))
+                        * background_tile_size
+                        + tile_pixel_x;
+                    let tile_chr_y = (tile as usize / (256 / background_tile_size))
+                        * background_tile_size
+                        + tile_pixel_y;
+                    let tile_address = tile_chr_y * 256 + tile_chr_x;
+                    let tile_pixel_color = self.chr_ram[tile_address];
+                    // write it in the framebuffer (if not 0)
+                    if tile_pixel_color != 0 {
+                        self.write_pixel(x, y, tile_pixel_color);
                     }
-                }
-
-                absolute_x %= 256;
-                absolute_y %= 256;
-
-                let tile_x = absolute_x / background_tile_size;
-                let tile_y = absolute_y / background_tile_size;
-                let mut tile = 0;
-                match background_block {
-                    0 => tile = self.background0[tile_y * (256 / background_tile_size) + tile_x],
-                    1 => tile = self.background1[tile_y * (256 / background_tile_size) + tile_x],
-                    2 => tile = self.background2[tile_y * (256 / background_tile_size) + tile_x],
-                    3 => tile = self.background3[tile_y * (256 / background_tile_size) + tile_x],
-                    _ => (),
-                }
-                // get pixel tile
-                let tile_pixel_x = absolute_x % background_tile_size;
-                let tile_pixel_y = absolute_y % background_tile_size;
-                let tile_chr_x = (tile as usize % (256 / background_tile_size))
-                    * background_tile_size
-                    + tile_pixel_x;
-                let tile_chr_y = (tile as usize / (256 / background_tile_size))
-                    * background_tile_size
-                    + tile_pixel_y;
-                let tile_address = tile_chr_y * 256 + tile_chr_x;
-                let tile_pixel_color = self.chr_ram[tile_address];
-                // write it in the framebuffer (if not 0)
-                if tile_pixel_color != 0 {
-                    self.write_pixel(x, y, tile_pixel_color);
                 }
             }
         }
