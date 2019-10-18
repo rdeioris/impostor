@@ -78,7 +78,7 @@ pub fn debugger<
                             }
                             Err(err) => println!("Error: {}", err),
                         },
-                        _ => println!("syntax: w <address> <value>"),
+                        _ => println!("syntax: j <address>"),
                     },
                     Some("q") => return false,
                     Some("r") => return false,
