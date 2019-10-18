@@ -19,7 +19,7 @@ pub fn debugger<
             rl.readline(format!("{}>>", debugged.address_str(debugged.get_cursor())).as_ref());
         match readline {
             Ok(line) => {
-                rl.add_history_entry(line.as_ref());
+                rl.add_history_entry(line.as_str());
                 let mut iter = line.split_whitespace();
                 match iter.next() {
                     Some("p") => match iter.next() {

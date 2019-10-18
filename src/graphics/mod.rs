@@ -3,7 +3,7 @@ extern crate glutin;
 
 use std::mem;
 
-use self::glutin::GlContext;
+use self::glutin::Context;
 
 pub use self::glutin::{ElementState, VirtualKeyCode, WindowEvent};
 pub mod vga_mode13h_palette;
@@ -13,7 +13,7 @@ pub struct Screen {
     pub width: usize,
     pub height: usize,
     pub event_loop: glutin::EventsLoop,
-    gl_window: glutin::GlWindow,
+    window_context: glutin::WindowedContext<glutin::PossiblyCurrent>,
     logical_size: LogicalSize,
 }
 
@@ -26,32 +26,30 @@ impl Screen {
             .with_resizable(false)
             .with_dimensions(logical_size);
 
-        let context_builder = glutin::ContextBuilder::new().with_vsync(true);
-
         let event_loop = glutin::EventsLoop::new();
 
-        let gl_window =
-            glutin::GlWindow::new(window_builder, context_builder, &event_loop).unwrap();
+        let context = glutin::ContextBuilder::new().with_vsync(true).build_windowed(window_builder, &event_loop).unwrap();
+        let window_context = unsafe {context.make_current().unwrap()};
+ 
+        unsafe {
+            gl::load_with(|symbol| window_context.get_proc_address(symbol) as *const _);
+            gl::ClearColor(0.0, 0.0, 0.0, 1.0);
+        }
 
         let screen = Screen {
             width,
             height,
             event_loop,
-            gl_window,
+            window_context,
             logical_size,
         };
 
-        unsafe {
-            screen.gl_window.make_current().unwrap();
-            gl::load_with(|symbol| screen.gl_window.get_proc_address(symbol) as *const _);
-            gl::ClearColor(0.0, 0.0, 0.0, 1.0);
-        }
 
         return screen;
     }
 
     pub fn swap(&self) {
-        self.gl_window.swap_buffers().unwrap();
+        self.window_context.swap_buffers().unwrap();
     }
 
     pub fn poll_events<F: FnMut(glutin::WindowEvent)>(&mut self, mut callback: F) {
@@ -61,9 +59,9 @@ impl Screen {
         });
         // Fix for macOS Mojave that has rendering issues
         if cfg!(target_os = "macos") {
-            self.gl_window.resize(PhysicalSize::from_logical(
+            self.window_context.resize(PhysicalSize::from_logical(
                 self.logical_size,
-                self.gl_window.get_hidpi_factor(),
+                self.window_context.window().get_hidpi_factor(),
             ));
         }
     }
@@ -125,7 +123,7 @@ impl Framebuffer {
 
     pub fn blit(&self, screen: &Screen, x: usize, y: usize, width: usize, height: usize) {
         // required for correct size when monitor dpi changes
-        let dpi_factor = screen.gl_window.get_hidpi_factor();
+        let dpi_factor = screen.window_context.window().get_hidpi_factor();
         let physical_size = PhysicalSize::from_logical(screen.logical_size, dpi_factor);
         unsafe {
             gl::BindTexture(gl::TEXTURE_2D, self.texture);
