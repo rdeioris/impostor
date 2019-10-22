@@ -44,7 +44,7 @@ impl Screen {
             logical_size,
         };
 
-        return screen;
+        screen
     }
 
     pub fn swap(&self) {

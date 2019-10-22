@@ -53,9 +53,9 @@ impl<T: AddressBusIO<u16, u8>> Chip8<T> {
     }
 
     fn read16_from_pc(&mut self) -> u16 {
-        let high = self.read8_from_pc() as u16;
-        let low = self.read8_from_pc() as u16;
-        return (high << 8) | low;
+        let high = u16::from(self.read8_from_pc());
+        let low = u16::from(self.read8_from_pc());
+        (high << 8) | low
     }
 
     fn advance_pc(&mut self) -> u16 {
@@ -120,8 +120,8 @@ impl<T: AddressBusIO<u16, u8>> Clock for Chip8<T> {
                 0x0002 => self.reg[x] &= self.reg[y],
                 0x0003 => self.reg[x] ^= self.reg[y],
                 0x0004 => {
-                    let a = self.reg[x] as u16;
-                    let b = self.reg[y] as u16;
+                    let a = u16::from(self.reg[x]);
+                    let b = u16::from(self.reg[y]);
                     self.reg[0xf] = 0;
                     if a + b > 255 {
                         self.reg[0xf] = 1;
@@ -147,14 +147,14 @@ impl<T: AddressBusIO<u16, u8>> Clock for Chip8<T> {
                 }
             }
             0xa000 => self.index = nnn,
-            0xb000 => self.pc = nnn + (self.reg[0] as u16),
+            0xb000 => self.pc = nnn + u16::from(self.reg[0]),
             0xc000 => self.reg[x] = rand::random::<u8>() & nn,
             0xd000 => {
                 self.redraw = true;
                 // first clear collision reg
                 self.reg[0xf] = 0x00;
                 for i in 0..n {
-                    let index = self.index + i as u16;
+                    let index = self.index + u16::from(i);
                     let pixels = self.read8(index);
                     let pixel_y = self.reg[y] + i;
                     if pixel_y >= 32 {
@@ -217,9 +217,9 @@ impl<T: AddressBusIO<u16, u8>> Clock for Chip8<T> {
                         index += 1;
                     }
                 }
-                0x001e => self.index += self.reg[x] as u16,
+                0x001e => self.index += u16::from(self.reg[x]),
                 0x0029 => {
-                    let offset = self.reg[x] as u16;
+                    let offset = u16::from(self.reg[x]);
                     self.index = offset * 5;
                 }
                 _ => panic!("invalid opcode ${:04X}", opcode),

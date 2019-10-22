@@ -295,7 +295,7 @@ impl AivFrameBuffer {
         });
 
         self.input = input_state;
-        return exit;
+        exit
     }
 }
 
@@ -479,7 +479,7 @@ fn main() {
 
     let mut breakpoints: Vec<u16> = Vec::new();
     if matches.is_present("breakpoint") {
-        let breakpoint_addresses = matches.value_of("breakpoint").unwrap().split(",");
+        let breakpoint_addresses = matches.value_of("breakpoint").unwrap().split(',');
         for breakpoint_address in breakpoint_addresses {
             breakpoints.push(to_number(breakpoint_address).unwrap());
         }
@@ -554,7 +554,7 @@ fn main() {
     cpu.set_code_breakpoint(matches.is_present("code-breakpoint"));
 
     loop {
-        let mut ticks_counter = ticks_per_frame as i64;
+        let mut ticks_counter = i64::from(ticks_per_frame);
         while ticks_counter > 0 {
             if cpu.is_code_breakpoint_requested() || breakpoints.contains(&cpu.pc) {
                 in_debugger = true;
@@ -565,10 +565,7 @@ fn main() {
 
             cpu.step();
 
-            match dma.as_mut() {
-                Some(block_device_dma) => block_device_dma.borrow_mut().step(),
-                _ => (),
-            }
+            if let Some(block_device_dma) = dma.as_mut() { block_device_dma.borrow_mut().step() }
 
             if cpu.debug {
                 println!("[{:04X}] {}", cpu.debug_pc, cpu.debug_line);

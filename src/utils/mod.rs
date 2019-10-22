@@ -9,7 +9,7 @@ pub fn to_number<T: Address<FromStrRadixErr = ParseIntError>>(
         return T::from_str_radix(&string[2..len], 16);
     }
 
-    if string.starts_with("$") {
+    if string.starts_with('$') {
         let len = string.len();
         return T::from_str_radix(&string[1..len], 16);
     }
@@ -19,10 +19,10 @@ pub fn to_number<T: Address<FromStrRadixErr = ParseIntError>>(
         return T::from_str_radix(&string[2..len], 2);
     }
 
-    if string.starts_with("%") {
+    if string.starts_with('%') {
         let len = string.len();
         return T::from_str_radix(&string[1..len], 2);
     }
 
-    return T::from_str_radix(string, 10);
+    T::from_str_radix(string, 10)
 }

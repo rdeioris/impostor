@@ -51,7 +51,7 @@ impl UnixTerm {
             }
         });
 
-        return term;
+        term
     }
 }
 
@@ -74,17 +74,17 @@ impl AddressBusIO<u8, u8> for UnixTerm {
         let buffer = [value; 1];
         match address {
             0x01 => {
-                self.stdout.write(&buffer).unwrap();
+                self.stdout.write_all(&buffer).unwrap();
                 self.stdout.flush().unwrap();
                 self.last_stdout = value;
             }
             0x02 => {
-                self.stderr.write(&buffer).unwrap();
+                self.stderr.write_all(&buffer).unwrap();
                 self.stderr.flush().unwrap();
                 self.last_stderr = value;
             }
             0x03 => {
-                process::exit(value as i32);
+                process::exit(i32::from(value));
             }
             _ => {}
         }

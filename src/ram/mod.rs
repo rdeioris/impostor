@@ -22,7 +22,7 @@ impl<T: Data> Ram<T> {
 
 impl<T: Address + As<usize>, U: Data> AddressBusIO<T, U> for Ram<U> {
     fn read(&mut self, address: T) -> U {
-        return self.cells[address.as_()];
+        self.cells[address.as_()]
     }
 
     fn write(&mut self, address: T, value: U) {
