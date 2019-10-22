@@ -47,7 +47,7 @@ impl<T: Address + As<usize>> AddressBusBlockIO<T, u8> for BlockDevice {
             return;
         }
         self.file.seek(SeekFrom::Start(offset)).unwrap();
-        self.file.read(buffer).unwrap();
+        self.file.read_exact(buffer).unwrap();
     }
 
     fn write(&mut self, address: T, buffer: &[u8]) {
@@ -56,7 +56,7 @@ impl<T: Address + As<usize>> AddressBusBlockIO<T, u8> for BlockDevice {
             return;
         }
         self.file.seek(SeekFrom::Start(offset)).unwrap();
-        self.file.write(buffer).unwrap();
+        self.file.write_all(buffer).unwrap();
         self.file.sync_all().unwrap();
     }
 }

@@ -219,7 +219,7 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
 
         opcode!(cpu, ror, 0x66, zeropage, 0x76, zeropage_x, 0x6e, absolute, 0x7e, absolute_x);
 
-        return cpu;
+        cpu
     }
 
     fn register_opcode(
@@ -241,9 +241,9 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
     }
 
     fn read16(&mut self, addr: u16) -> u16 {
-        let low = self.read8(addr) as u16;
-        let high = self.read8(addr + 1) as u16;
-        return (high << 8) | low;
+        let low = u16::from(self.read8(addr));
+        let high = u16::from(self.read8(addr + 1));
+        (high << 8) | low
     }
 
     fn write8(&mut self, addr: u16, value: u8) {
@@ -252,19 +252,19 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
 
     fn read8_from_pc(&mut self) -> u8 {
         let pc = self.advance_pc();
-        return self.read8(pc);
+        self.read8(pc)
     }
 
     fn read16_from_pc(&mut self) -> u16 {
-        let low = self.read8_from_pc() as u16;
-        let high = self.read8_from_pc() as u16;
-        return (high << 8) | low;
+        let low = u16::from(self.read8_from_pc());
+        let high = u16::from(self.read8_from_pc());
+        (high << 8) | low
     }
 
     fn advance_pc(&mut self) -> u16 {
         let pc = self.pc;
         self.pc += 1;
-        return pc;
+        pc
     }
 
     fn get_opcode_name(&self) -> &'static str {
@@ -289,14 +289,14 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
     fn accumulator(&mut self) {
         self.ticks += 2;
         if self.debug {
-            self.debug_line = format!("{}", self.get_opcode_name());
+            self.debug_line = self.get_opcode_name().to_string();
         }
     }
 
     fn relative(&mut self) {
         let offset = self.read8_from_pc() as i8;
         self.ticks += 2;
-        let addr: i32 = self.pc as i32 + offset as i32;
+        let addr = i32::from(self.pc) + i32::from(offset);
         self.addr = addr as u16;
         if self.debug {
             self.debug_line = format!("{} ${:04X}", self.get_opcode_name(), self.addr);
@@ -304,7 +304,7 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
     }
 
     fn zeropage(&mut self) {
-        let addr = self.read8_from_pc() as u16;
+        let addr = u16::from(self.read8_from_pc());
         self.addr = addr;
         self.value = self.read8(addr);
         self.ticks += 3;
@@ -325,7 +325,7 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
         let addr = self.read16_from_pc();
         let original_addr = addr;
         let mut boundary = 0;
-        let addr_x = addr + self.x as u16;
+        let addr_x = addr + u16::from(self.x);
         if addr >> 8 != addr_x >> 8 {
             boundary = 1;
         }
@@ -346,7 +346,7 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
         let addr = self.read16_from_pc();
         let original_addr = addr;
         let mut boundary = 0;
-        let addr_y = addr + self.y as u16;
+        let addr_y = addr + u16::from(self.y);
         if addr >> 8 != addr_y >> 8 {
             boundary = 1;
         }
@@ -367,8 +367,8 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
         // leave it as u8 to allow overflowing
         let original_addr = self.read8_from_pc();
         let addr = original_addr + self.x;
-        self.addr = addr as u16;
-        self.value = self.read8(addr as u16);
+        self.addr = u16::from(addr);
+        self.value = self.read8(u16::from(addr));
         self.ticks += 3;
         if self.debug {
             self.debug_line = format!(
@@ -384,8 +384,8 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
         // leave it as u8 to allow overflowing
         let original_addr = self.read8_from_pc();
         let addr = original_addr + self.y;
-        self.addr = addr as u16;
-        self.value = self.read8(addr as u16);
+        self.addr = u16::from(addr);
+        self.value = self.read8(u16::from(addr));
         self.ticks += 3;
         if self.debug {
             self.debug_line = format!(
@@ -417,7 +417,7 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
     fn indirect_x(&mut self) {
         let pc = self.pc;
         // leave it as u8 to allow overflowing
-        let original_offset = self.read8(pc) as u16;
+        let original_offset = u16::from(self.read8(pc));
         let offset = original_offset + 2;
         let indirect_addr = self.read16(offset);
         self.addr = indirect_addr;
@@ -437,8 +437,8 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
     fn indirect_y(&mut self) {
         let pc = self.pc;
         // leave it as u8 to allow overflowing
-        let offset = self.read8(pc) as u16;
-        let indirect_addr = self.read16(offset) + (self.y as u16);
+        let offset = u16::from(self.read8(pc));
+        let indirect_addr = self.read16(offset) + u16::from(self.y);
         self.value = self.read8(indirect_addr);
         self.addr = indirect_addr;
         self.pc += 1;
@@ -457,7 +457,7 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
     }
 
     fn get_flag(&self, flag: u8) -> bool {
-        return (self.status & flag) != 0;
+        (self.status & flag) != 0
     }
 
     fn set_flag(&mut self, flag: u8, enabled: bool) {
@@ -697,8 +697,8 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
     fn sbc(&mut self) {
         // first check for carry
         let carry = if self.get_flag(CARRY) { 0 } else { 1 };
-        let orig_a: i16 = self.a as i16;
-        let value: i16 = self.value as i16;
+        let orig_a = i16::from(self.a);
+        let value = i16::from(self.value);
         let result: i16 = orig_a - value - carry;
         self.set_flag(CARRY, result >= 0 && result <= 0xff);
         self.a = result as u8;
@@ -715,8 +715,8 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
     fn adc(&mut self) {
         // first check for carry
         let carry = if self.get_flag(CARRY) { 1 } else { 0 };
-        let orig_a: i16 = self.a as i16;
-        let value: i16 = self.value as i16;
+        let orig_a = i16::from(self.a);
+        let value = i16::from(self.value);
         let result: i16 = orig_a + value + carry;
         self.set_flag(CARRY, result > 0xff);
         self.a = result as u8;
@@ -843,7 +843,7 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
     }
 
     fn pha(&mut self) {
-        let sp: u16 = 0x100 + (self.sp as u16);
+        let sp: u16 = 0x100 + u16::from(self.sp);
         let a = self.a;
         self.write8(sp, a);
         self.sp -= 1;
@@ -852,7 +852,7 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
 
     fn pla(&mut self) {
         self.sp += 1;
-        let sp: u16 = 0x100 + (self.sp as u16);
+        let sp: u16 = 0x100 + u16::from(self.sp);
         self.a = self.read8(sp);
         self.ticks += 2;
     }
@@ -866,7 +866,7 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
     }
 
     fn php(&mut self) {
-        let sp: u16 = 0x100 + (self.sp as u16);
+        let sp: u16 = 0x100 + u16::from(self.sp);
         let status = self.status;
         self.write8(sp, status);
         self.sp -= 1;
@@ -875,13 +875,13 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
 
     fn plp(&mut self) {
         self.sp += 1;
-        let sp: u16 = 0x100 + (self.sp as u16);
+        let sp: u16 = 0x100 + u16::from(self.sp);
         self.status = self.read8(sp);
         self.ticks += 2;
     }
 
     fn jsr(&mut self) {
-        let sp: u16 = 0x100 + (self.sp as u16);
+        let sp: u16 = 0x100 + u16::from(self.sp);
         let pc = self.pc - 1;
         let pc_high = (pc >> 8) as u8;
         let pc_low = (pc & 0x00ff) as u8;
@@ -902,7 +902,7 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
     }
 
     fn interrupt(&mut self, address: u16) {
-        let sp: u16 = 0x100 + (self.sp as u16);
+        let sp: u16 = 0x100 + u16::from(self.sp);
         let pc = self.pc;
         let pc_high = (pc >> 8) as u8;
         let pc_low = (pc & 0x00ff) as u8;
@@ -930,9 +930,9 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
 
     fn rts(&mut self) {
         self.sp += 1;
-        let sp: u16 = 0x100 + (self.sp as u16);
-        let pc_low: u16 = self.read8(sp) as u16;
-        let pc_high: u16 = self.read8(sp + 1) as u16;
+        let sp: u16 = 0x100 + u16::from(self.sp);
+        let pc_low = u16::from(self.read8(sp));
+        let pc_high = u16::from(self.read8(sp + 1));
         self.sp += 1;
         self.pc = (pc_high << 8 | pc_low) + 1;
         self.ticks += 4;
@@ -940,10 +940,10 @@ impl<T: AddressBusIO<u16, u8>> MOS6502<T> {
 
     fn rti(&mut self) {
         self.sp += 1;
-        let sp: u16 = 0x100 + (self.sp as u16);
+        let sp = 0x100 + u16::from(self.sp);
         let status = self.read8(sp);
-        let pc_low: u16 = self.read8(sp + 1) as u16;
-        let pc_high: u16 = self.read8(sp + 2) as u16;
+        let pc_low = u16::from(self.read8(sp + 1));
+        let pc_high = u16::from(self.read8(sp + 2));
         self.sp += 2;
         self.pc = pc_high << 8 | pc_low;
         self.status = status;
@@ -995,7 +995,7 @@ impl<T: AddressBusIO<u16, u8>> Clock for MOS6502<T> {
 
 impl<T: AddressBusIO<u16, u8>> AddressBusIO<u16, u8> for MOS6502<T> {
     fn read(&mut self, address: u16) -> u8 {
-        return self.read8(address);
+        self.read8(address)
     }
 
     fn write(&mut self, address: u16, data: u8) {
@@ -1039,7 +1039,7 @@ impl<T: AddressBusIO<u16, u8>> Debug<u16, u8> for MOS6502<T> {
     fn is_code_breakpoint_requested(&mut self) -> bool {
         let requested = self.requested_code_breakpoint;
         self.requested_code_breakpoint = false;
-        return requested;
+        requested
     }
 }
 
@@ -1049,17 +1049,19 @@ impl<T: AddressBusIO<u16, u8>> Interrupt<u16> for MOS6502<T> {
     // line 40: RESET $FFFC/$FFFD
     fn raise(&mut self, line: u16) {
         match line {
-            4 => if !self.get_flag(INTERRUPT) {
-                if !self.get_flag(BRK) {
+            4 => {
+                if !self.get_flag(INTERRUPT) && !self.get_flag(BRK) {
                     self.interrupt(0xfffe);
                     // set it later so the status can be restored from the stack
                     self.set_flag(BRK, true);
                 }
-            },
+            }
             6 => self.interrupt(0xfffa),
-            40 => if !self.get_flag(INTERRUPT) {
-                self.reset(0xfffc)
-            },
+            40 => {
+                if !self.get_flag(INTERRUPT) {
+                    self.reset(0xfffc)
+                }
+            }
             _ => println!("raised interrupt on line {}", line),
         }
     }

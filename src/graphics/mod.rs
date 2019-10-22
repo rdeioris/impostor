@@ -3,8 +3,6 @@ extern crate glutin;
 
 use std::mem;
 
-use self::glutin::Context;
-
 pub use self::glutin::{ElementState, VirtualKeyCode, WindowEvent};
 pub mod vga_mode13h_palette;
 use self::glutin::dpi::{LogicalSize, PhysicalSize};
@@ -28,9 +26,11 @@ impl Screen {
 
         let event_loop = glutin::EventsLoop::new();
 
-        let context = glutin::ContextBuilder::new().with_vsync(true).build_windowed(window_builder, &event_loop).unwrap();
-        let window_context = unsafe {context.make_current().unwrap()};
- 
+        let context = glutin::ContextBuilder::new()
+            .with_vsync(true)
+            .build_windowed(window_builder, &event_loop)
+            .unwrap();
+        let window_context = unsafe { context.make_current().unwrap() };
         unsafe {
             gl::load_with(|symbol| window_context.get_proc_address(symbol) as *const _);
             gl::ClearColor(0.0, 0.0, 0.0, 1.0);
@@ -44,8 +44,7 @@ impl Screen {
             logical_size,
         };
 
-
-        return screen;
+        screen
     }
 
     pub fn swap(&self) {

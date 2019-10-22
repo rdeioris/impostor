@@ -23,5 +23,8 @@ impl<T: Address, U: Data> AddressBusIO<T, U> for TestAddressBusIO<T, U> {
 fn converto_to_lower() {
     let mut bus: TestAddressBusIO<u8, u8> = TestAddressBusIO::default();
     let mut adapter = BusAdapter::new(&mut bus);
-    assert_eq!(<AddressBusIO<u32, u32>>::read(&mut adapter, 0xaabbccdd), 1);
+    assert_eq!(
+        <dyn AddressBusIO<u32, u32>>::read(&mut adapter, 0xaabbccdd),
+        1
+    );
 }

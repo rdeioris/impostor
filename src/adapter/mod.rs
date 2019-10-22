@@ -1,11 +1,11 @@
 use {Address, AddressBusIO, As, Data};
 
 pub struct BusAdapter<'a, T: Address, U: Data> {
-    connection: &'a mut AddressBusIO<T, U>,
+    connection: &'a mut dyn AddressBusIO<T, U>,
 }
 
 impl<'a, T: Address, U: Data> BusAdapter<'a, T, U> {
-    pub fn new(bus: &'a mut AddressBusIO<T, U>) -> BusAdapter<'a, T, U> {
+    pub fn new(bus: &'a mut dyn AddressBusIO<T, U>) -> BusAdapter<'a, T, U> {
         BusAdapter { connection: bus }
     }
 }

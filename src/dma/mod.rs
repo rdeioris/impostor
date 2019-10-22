@@ -5,7 +5,7 @@ use {Address, AddressBusBlockIO, AddressBusIO, As, Clock};
 
 pub struct DmaBlock<T: Address> {
     block_device: BlockDevice,
-    bus: Rc<RefCell<AddressBusIO<T, u8>>>,
+    bus: Rc<RefCell<dyn AddressBusIO<T, u8>>>,
     block: T,
     blocks_to_transfer: u8,
     address: T,
@@ -15,7 +15,10 @@ pub struct DmaBlock<T: Address> {
 }
 
 impl<T: Address> DmaBlock<T> {
-    pub fn new(block_device: BlockDevice, bus: Rc<RefCell<AddressBusIO<T, u8>>>) -> DmaBlock<T> {
+    pub fn new(
+        block_device: BlockDevice,
+        bus: Rc<RefCell<dyn AddressBusIO<T, u8>>>,
+    ) -> DmaBlock<T> {
         DmaBlock {
             block_device,
             bus,
@@ -66,14 +69,14 @@ impl AddressBusIO<u16, u8> for DmaBlock<u16> {
     fn write(&mut self, address: u16, value: u8) {
         match address {
             0 => {
-                self.block |= (value as u16) << (8 * (1 - self.block_counter));
+                self.block |= u16::from(value) << (8 * (1 - self.block_counter));
                 self.block_counter += 1;
                 if self.block_counter > 1 {
                     self.block_counter = 0;
                 }
             }
             1 => {
-                self.address |= (value as u16) << (8 * (1 - self.address_counter));
+                self.address |= u16::from(value) << (8 * (1 - self.address_counter));
                 self.address_counter += 1;
                 if self.address_counter > 1 {
                     self.address_counter = 0;

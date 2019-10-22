@@ -2,6 +2,7 @@ use rand;
 use rand::distributions::{Distribution, Standard};
 use {Address, AddressBusIO, Data};
 
+#[derive(Default)]
 pub struct Random<T: Data> {
     value: T,
 }
@@ -17,7 +18,7 @@ where
     Standard: Distribution<U>,
 {
     fn read(&mut self, _address: T) -> U {
-        return self.value;
+        self.value
     }
 
     fn write(&mut self, _address: T, _value: U) {

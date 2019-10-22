@@ -7,7 +7,7 @@ use {Address, AddressBusIO, Data};
 struct AddressMapping<'a, T: Address + 'a, U: Data + 'a> {
     start: T,
     end: T,
-    connection: &'a mut AddressBusIO<T, U>,
+    connection: &'a mut dyn AddressBusIO<T, U>,
 }
 
 struct MirrorMapping<T: Address> {
@@ -31,7 +31,7 @@ impl<'a, T: Address, U: Data> MemoryController<'a, T, U> {
         }
     }
 
-    pub fn map(&mut self, start: T, end: T, connection: &'a mut AddressBusIO<T, U>) {
+    pub fn map(&mut self, start: T, end: T, connection: &'a mut dyn AddressBusIO<T, U>) {
         self.mappings.push(AddressMapping {
             start: start,
             end: end,
@@ -91,7 +91,7 @@ impl<'a, T: Address, U: Data> AddressBusIO<T, U> for MemoryController<'a, T, U> 
 struct AddressMappingBoxed<T: Address, U: Data> {
     start: T,
     end: T,
-    connection: Box<AddressBusIO<T, U>>,
+    connection: Box<dyn AddressBusIO<T, U>>,
 }
 
 pub struct MemoryControllerBoxed<T: Address, U: Data> {
@@ -105,7 +105,7 @@ impl<T: Address, U: Data> MemoryControllerBoxed<T, U> {
         }
     }
 
-    pub fn map(&mut self, start: T, end: T, connection: Box<AddressBusIO<T, U>>) {
+    pub fn map(&mut self, start: T, end: T, connection: Box<dyn AddressBusIO<T, U>>) {
         self.mappings.push(AddressMappingBoxed {
             start: start,
             end: end,
@@ -137,7 +137,7 @@ impl<T: Address, U: Data> AddressBusIO<T, U> for MemoryControllerBoxed<T, U> {
 struct AddressMappingShared<T: Address, U: Data> {
     start: T,
     end: T,
-    connection: Rc<RefCell<AddressBusIO<T, U>>>,
+    connection: Rc<RefCell<dyn AddressBusIO<T, U>>>,
 }
 
 pub struct MemoryControllerShared<T: Address, U: Data> {
@@ -151,7 +151,7 @@ impl<T: Address, U: Data> MemoryControllerShared<T, U> {
         }
     }
 
-    pub fn map(&mut self, start: T, end: T, connection: Rc<RefCell<AddressBusIO<T, U>>>) {
+    pub fn map(&mut self, start: T, end: T, connection: Rc<RefCell<dyn AddressBusIO<T, U>>>) {
         self.mappings.push(AddressMappingShared {
             start: start,
             end: end,
@@ -189,7 +189,7 @@ impl<T: Address, U: Data> AddressBusIO<T, U> for MemoryControllerShared<T, U> {
 struct AddressMappingThreadSafe<T: Address, U: Data> {
     start: T,
     end: T,
-    connection: Arc<Mutex<AddressBusIO<T, U> + Send + Sync>>,
+    connection: Arc<Mutex<dyn AddressBusIO<T, U> + Send + Sync>>,
 }
 
 pub struct MemoryControllerThreadSafe<T: Address, U: Data> {
@@ -207,7 +207,7 @@ impl<T: Address, U: Data> MemoryControllerThreadSafe<T, U> {
         &mut self,
         start: T,
         end: T,
-        connection: Arc<Mutex<AddressBusIO<T, U> + Send + Sync>>,
+        connection: Arc<Mutex<dyn AddressBusIO<T, U> + Send + Sync>>,
     ) {
         self.mappings.push(AddressMappingThreadSafe {
             start: start,
@@ -257,7 +257,7 @@ impl<'a, T: Address, U: Data> MemoryControllerSmart<'a, T, U> {
             shared_mappings: Vec::new(),
         }
     }
-    pub fn map(&mut self, start: T, end: T, connection: &'a mut AddressBusIO<T, U>) {
+    pub fn map(&mut self, start: T, end: T, connection: &'a mut dyn AddressBusIO<T, U>) {
         self.mappings.push(AddressMapping {
             start: start,
             end: end,
@@ -265,7 +265,12 @@ impl<'a, T: Address, U: Data> MemoryControllerSmart<'a, T, U> {
         });
     }
 
-    pub fn map_shared(&mut self, start: T, end: T, connection: Rc<RefCell<AddressBusIO<T, U>>>) {
+    pub fn map_shared(
+        &mut self,
+        start: T,
+        end: T,
+        connection: Rc<RefCell<dyn AddressBusIO<T, U>>>,
+    ) {
         self.shared_mappings.push(AddressMappingShared {
             start: start,
             end: end,
