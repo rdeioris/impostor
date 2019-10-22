@@ -102,7 +102,6 @@ impl AivFrameBuffer {
     fn vblank(&mut self) -> bool {
         self.screen.clear();
 
-        
         let background_tile_size = if self.background_mode & 0x01 == 1 {
             16
         } else {
@@ -111,7 +110,6 @@ impl AivFrameBuffer {
         let tiles_enabled = self.background_mode >> 3 & 0x01;
         for y in 0..=255 {
             for x in 0..=255 {
-                
                 // set background color
                 let background_color = self.background_color;
                 self.write_pixel(x, y, background_color);
@@ -171,7 +169,6 @@ impl AivFrameBuffer {
                 }
             }
         }
-        
 
         // check each sprite
         for i in 0..=63 {
@@ -379,15 +376,18 @@ fn main() {
             Arg::with_name("debug")
                 .long("debug")
                 .help("report CPU state after each opcode"),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("no-vblank")
                 .long("no-vblank")
                 .help("disable NMI interrupt on vblank"),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("code-breakpoint")
                 .long("code-breakpoint")
                 .help("enable code-driven breakpoints"),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("pc")
                 .required(false)
                 .long("pc")
@@ -395,7 +395,8 @@ fn main() {
                 .value_name("address")
                 .help("set initial PC")
                 .default_value("0xc000"),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("hz")
                 .required(false)
                 .long("hz")
@@ -403,7 +404,8 @@ fn main() {
                 .value_name("ticks")
                 .help("set ticks per second")
                 .default_value("1000000"),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("vsync")
                 .required(false)
                 .long("vsync")
@@ -411,7 +413,8 @@ fn main() {
                 .value_name("hz")
                 .help("specify the vsync hz")
                 .default_value("60"),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("piano-speed")
                 .required(false)
                 .long("piano-speed")
@@ -419,28 +422,32 @@ fn main() {
                 .value_name("milliseconds")
                 .help("set duration of a piano note")
                 .default_value("125"),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("chr-rom")
                 .required(false)
                 .long("chr-rom")
                 .takes_value(true)
                 .value_name("file")
                 .help("attach a chr rom to the graphics ram"),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("storage")
                 .required(false)
                 .long("storage")
                 .takes_value(true)
                 .value_name("file")
                 .help("attach a file-backed block device"),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("breakpoint")
                 .required(false)
                 .long("breakpoint")
                 .takes_value(true)
                 .value_name("address")
                 .help("set breakpoint to the specified comma separated list of addresses"),
-        ).arg(Arg::with_name("romfile").index(1).required(true))
+        )
+        .arg(Arg::with_name("romfile").index(1).required(true))
         .get_matches();
 
     let romfile = matches.value_of("romfile").unwrap();

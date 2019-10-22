@@ -1049,17 +1049,21 @@ impl<T: AddressBusIO<u16, u8>> Interrupt<u16> for MOS6502<T> {
     // line 40: RESET $FFFC/$FFFD
     fn raise(&mut self, line: u16) {
         match line {
-            4 => if !self.get_flag(INTERRUPT) {
-                if !self.get_flag(BRK) {
-                    self.interrupt(0xfffe);
-                    // set it later so the status can be restored from the stack
-                    self.set_flag(BRK, true);
+            4 => {
+                if !self.get_flag(INTERRUPT) {
+                    if !self.get_flag(BRK) {
+                        self.interrupt(0xfffe);
+                        // set it later so the status can be restored from the stack
+                        self.set_flag(BRK, true);
+                    }
                 }
-            },
+            }
             6 => self.interrupt(0xfffa),
-            40 => if !self.get_flag(INTERRUPT) {
-                self.reset(0xfffc)
-            },
+            40 => {
+                if !self.get_flag(INTERRUPT) {
+                    self.reset(0xfffc)
+                }
+            }
             _ => println!("raised interrupt on line {}", line),
         }
     }

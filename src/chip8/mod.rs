@@ -97,15 +97,21 @@ impl<T: AddressBusIO<u16, u8>> Clock for Chip8<T> {
                 self.sp -= 1;
                 self.pc = nnn;
             }
-            0x3000 => if self.reg[x] == nn {
-                self.pc += 2
-            },
-            0x4000 => if self.reg[x] != nn {
-                self.pc += 2
-            },
-            0x5000 => if self.reg[x] == self.reg[y] {
-                self.pc += 2
-            },
+            0x3000 => {
+                if self.reg[x] == nn {
+                    self.pc += 2
+                }
+            }
+            0x4000 => {
+                if self.reg[x] != nn {
+                    self.pc += 2
+                }
+            }
+            0x5000 => {
+                if self.reg[x] == self.reg[y] {
+                    self.pc += 2
+                }
+            }
             0x6000 => self.reg[x] = nn,
             0x7000 => self.reg[x] += nn,
             0x8000 => match opcode & 0x000f {
@@ -135,9 +141,11 @@ impl<T: AddressBusIO<u16, u8>> Clock for Chip8<T> {
                 }
                 _ => panic!("invalid opcode ${:04X}", opcode),
             },
-            0x9000 => if self.reg[x] != self.reg[y] {
-                self.pc += 2
-            },
+            0x9000 => {
+                if self.reg[x] != self.reg[y] {
+                    self.pc += 2
+                }
+            }
             0xa000 => self.index = nnn,
             0xb000 => self.pc = nnn + (self.reg[0] as u16),
             0xc000 => self.reg[x] = rand::random::<u8>() & nn,
@@ -169,12 +177,16 @@ impl<T: AddressBusIO<u16, u8>> Clock for Chip8<T> {
                 }
             }
             0xe000 => match opcode & 0x00ff {
-                0x9e => if self.keys[self.reg[x] as usize] {
-                    self.pc += 2
-                },
-                0xa1 => if !self.keys[self.reg[x] as usize] {
-                    self.pc += 2
-                },
+                0x9e => {
+                    if self.keys[self.reg[x] as usize] {
+                        self.pc += 2
+                    }
+                }
+                0xa1 => {
+                    if !self.keys[self.reg[x] as usize] {
+                        self.pc += 2
+                    }
+                }
                 _ => panic!("invalid opcode ${:04X}", opcode),
             },
             0xf000 => match opcode & 0x00ff {

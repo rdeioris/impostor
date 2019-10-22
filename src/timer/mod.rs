@@ -8,7 +8,7 @@ pub struct SimpleTimer<T: Data, U: Address> {
     counter: Arc<Mutex<T>>,
     timer: Arc<Mutex<timer::Timer>>,
     guard: Arc<Mutex<Option<timer::Guard>>>,
-    interrupt: Arc<Mutex<Option<Arc<Mutex<Interrupt<U> + Sync + Send>>>>>,
+    interrupt: Arc<Mutex<Option<Arc<Mutex<dyn Interrupt<U> + Sync + Send>>>>>,
     interrupt_line: Arc<Mutex<U>>,
 }
 
@@ -25,7 +25,7 @@ impl<T: Data, U: Address> SimpleTimer<T, U> {
 
     pub fn connect_to_interrupt_line(
         &mut self,
-        interrupt: Arc<Mutex<Interrupt<U> + Sync + Send>>,
+        interrupt: Arc<Mutex<dyn Interrupt<U> + Sync + Send>>,
         line: U,
     ) {
         *self.interrupt.lock().unwrap() = Some(interrupt);
